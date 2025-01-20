@@ -1,0 +1,69 @@
+<%- include('../partials/usertab.ejs') %>
+
+    <div class="table-responsive mt-4" id="productsAvailable">
+        <section class="d-flex justify-content-between align-items-center">
+        </section>
+        <table class="table table-borderless table-lg">
+            <thead>
+                <tr>
+                    <th>No.</th>
+                    <th>sellerId</th>
+                    <th>sellerName</th>
+                    <th>sellerEmail</th>
+                    <th>status</th>
+                    <th>View profile</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% for (let i=0; i < seller.length; i++) { %>
+                    <tr>
+                        <th scope="row">
+                            <%= (currentPage - 1) * limit + i + 1 %>
+                        </th>
+                        <td>
+                            <%= seller[i]._id%>
+                        </td>
+                        <td>
+                            <%= seller[i].name %>
+                        </td>
+                        <td>
+                            <%= seller[i].email %>
+                        </td>
+                        <td>
+                            <%= seller[i].workingstatus %>
+                        </td>
+                        <td>
+                            <section>
+                                <a href="/api/user/profile/<%=seller[i].email%>" class="text-decoration-none text-dark">
+                                    <button class="btn btn-primary w-20 distributeButton"
+                                        data-product-id="<%= seller[i].email %>">view profile
+                                    </button>
+                                </a>
+                            </section>
+                        </td>
+                    </tr>
+                    <% } %>
+            </tbody>
+        </table>
+
+        <nav aria-label="Page navigation example">
+            <ul class="pagination">
+                <% if (currentPage> 1) { %>
+                    <li class="page-item"><a class="page-link"
+                            href="?page=<%= currentPage - 1 %>&limit=<%= limit %>">Previous</a></li>
+                    <% } %>
+                        <% for (let i=1; i <=totalPages; i++) { %>
+                            <li class="page-item <%= currentPage === i ? 'active' : '' %>">
+                                <a class="page-link" href="?page=<%= i %>&limit=<%= limit %>">
+                                    <%= i %>
+                                </a>
+                            </li>
+                            <% } %>
+                                <% if (currentPage < totalPages) { %>
+                                    <li class="page-item"><a class="page-link"
+                                            href="?page=<%= currentPage + 1 %>&limit=<%= limit %>">Next</a>
+                                    </li>
+                                    <% } %>
+            </ul>
+        </nav>
+    </div>

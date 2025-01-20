@@ -1,0 +1,258 @@
+<%- include('../partials/usertab.ejs') %>
+    <div class="container">
+        <% if (title==='mobile' ) { %>
+            <div class="modal" id="distributeproductmodal" tabindex="-1" aria-labelledby="distributeproductmodal"
+                aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content modal-content-custom modal-lg" style="max-width: 800px;">
+                        <div class="modal-header">
+                            <h1 class="modal-title fs-5" id="exampleModalLabel">Distribute Mobile</h1>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="distributionmodal" method="post">
+                                <input type="hidden" id="stockId" name="stockId">
+                                <div class="mb-3">
+                                    <label for="model" class="form-label">Main Shop</label>
+                                    <input type="text" class="form-control" id="mainshop" name="mainshop" value="SHOP62"
+                                        placeholder="model" />
+                                </div>
+                                <div class="mb-3">
+                                    <label for="shop" class="form-label">Other Shop</label>
+                                    <select class="form-control" id="shop" name="shop">
+                                        <option value="" disabled selected>Select a shop</option>
+                                        <option value="shop623">SHOP623</option>
+                                        <option value="shop632W">SHOP623w</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="quantity" class="form-label">Quantity</label>
+                                    <input type="number" class="form-control" id="quantity" name="quantity"
+                                        placeholder="quantity" />
+                                </div>
+                                <button class="btn btn-primary" type="submit">Submit</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <% } else { %>
+                <div class="modal" id="distributeproductmodal" tabindex="-1" aria-labelledby="distributeproductmodal"
+                    aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content modal-content-custom modal-lg" style="max-width: 800px;">
+                            <div class="modal-header">
+                                <h1 class="modal-title fs-5" id="exampleModalLabel">Distribute Accessory</h1>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="distributionmodal" method="post">
+                                    <input type="hidden" id="stockId" name="stockId">
+                                    <div class="mb-3">
+                                        <label for="model" class="form-label">Main Shop</label>
+                                        <input type="text" class="form-control" id="mainshop" name="mainshop"
+                                            value="SHOP62" placeholder="model" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="shop" class="form-label">Other Shop</label>
+                                        <select class="form-control" id="shop" name="shop">
+                                            <option value="" disabled selected>Select a shop</option>
+                                            <option value="shop623">SHOP623</option>
+                                            <option value="shop632W">SHOP623w</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="quantity" class="form-label">Quantity</label>
+                                        <input type="number" class="form-control" id="quantity" name="quantity"
+                                            placeholder="quantity" />
+                                    </div>
+                                    <button class="btn btn-primary" type="submit">Submit</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <% } %>
+
+                    <!-- modal for transfer -->
+                    <div class="modal" id="transferproductmodal" tabindex="-1" aria-labelledby="distributeproductmodal"
+                        aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content modal-content-custom modal-lg" style="max-width: 800px;">
+                                <div class="modal-header">
+                                    <h1 class="modal-title fs-5" id="exampleModalLabel">Transfer Modal</h1>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                        aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <form id="transferformmodal" method="post" action="/api/inventory/create-transfer">
+                                        <input type="hidden" id="tranferedstockId" name="stockId">
+                                        <div class="mb-3">
+                                            <label for="shop" class="form-label">From Shop</label>
+                                            <select class="form-control" id="shopowning" name="shopowning">
+                                                <option value="" disabled selected>Select a shop</option>
+                                                <option value="shop623">SHOP623</option>
+                                                <option value="shop623w">SHOP623w</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="shop" class="form-label">TO Shop</label>
+                                            <select class="form-control" id="shoptoown" name="shoptoown">
+                                                <option value="" disabled selected>Select a shop</option>
+                                                <option value="shop623">SHOP623</option>
+                                                <option value="shop623w">SHOP623w</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="quantity" class="form-label">Quantity</label>
+                                            <input type="number" class="form-control" id="transferedquantity"
+                                                name="transferedquantity" placeholder="quantity" />
+                                        </div>
+                                        <button class="btn btn-primary" type="submit">Submit</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Search form -->
+                    <div class="mt-4">
+                        <form method="get" action="">
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="Search for products" name="search"
+                                    value="<%= typeof search !== 'undefined' ? search : '' %>">
+                                <button class="btn btn-outline-secondary" type="submit">Search</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="table-responsive mt-4" id="productsAvailable">
+                        <section class="d-flex justify-content-between align-items-center">
+                            <h2>
+                                <%= title==="mobile" ? "Mobile Products Available" : "Accessory Products Available" %>
+                            </h2>
+                        </section>
+                        <table class="table table-borderless table-lg">
+                            <thead>
+                                <tr>
+                                    <th>No.</th>
+                                    <th>itemName</th>
+                                    <th>ItemBrand</th>
+                                    <th>itemModel</th>
+                                    <th>Available</th>
+                                    <th>Arrival date</th>
+                                    <th>Distribute</th>
+                                    <th>Transfer</th>
+                                    <th>update</th>
+                                    <th>delete</th>
+                                    <th>View</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% for (let i=0; i < item.length; i++) { %>
+                                    <tr>
+                                        <th scope="row">
+                                            <%= (currentPage - 1) * limit + i + 1 %>
+                                        </th>
+                                        <td>
+                                            <%= item[i].itemName %>
+                                        </td>
+                                        <td>
+                                            <%= item[i].brand %>
+                                        </td>
+                                        <td>
+                                            <%= item[i].itemModel %>
+                                        </td>
+                                        <td>
+                                            <%= item[i].availableStock %>
+                                        </td>
+                                        <td>
+                                            <%= new Date(item[i].arrivalDate).toLocaleDateString() %>
+                                        </td>
+                                        <td>
+                                            <section>
+                                                <button class="btn btn-primary w-20 distributeButton"
+                                                    data-product-id="<%= item[i]._id %>" <% if (title==='mobile' ) { %>
+                                                    data-product-type="mobile"
+                                                    <% } else { %>
+                                                        data-product-type="accessory"
+                                                        <% } %>
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#distributeproductmodal">
+                                                            <%= title==='mobile' ? 'distributemobile' : 'distribute' %>
+                                                </button>
+                                            </section>
+                                        </td>
+                                        <td>
+                                            <section>
+                                                <button class="btn btn-primary w-20 transferbutton"
+                                                    data-product-id="<%= item[i]._id %>" <% if (title==='mobile' ) { %>
+                                                    data-product-type="mobile"
+                                                    <% } else { %>
+                                                        data-product-type="accessory"
+                                                        <% } %>
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#transferproductmodal">
+                                                            <%= title==='mobile' ? 'transfermobile' : 'transfer' %>
+                                                </button>
+                                            </section>
+
+                                        </td>
+                                        <td>
+                                            <section>
+                                                <button type="button" class="btn btn-warning addsales"
+                                                    data-bs-toggle="modal" data-product-id="<%- item[i]._id %>"
+                                                    data-bs-target="#saleProductModal">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            </section>
+                                        </td>
+                                        <td>
+                                            <section>
+                                                <button type="button" class="btn btn-danger addsales"
+                                                    data-bs-toggle="modal" data-product-id="<%- item[i]._id %>"
+                                                    data-bs-target="#saleProductModal">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </section>
+                                        </td>
+                                        <td>
+                                            <section>
+                                                <a href="<%= title === 'mobile' ? '/api/inventory/mobile/item/' + item[i]._id : '/api/inventory/accessory/item/' + item[i]._id %>"
+                                                    class="text-decoration-none text-dark">
+                                                    <button type="button" class="btn btn-primary addsales"
+                                                        data-product-id="<%- item[i]._id %>"
+                                                        data-bs-target="#saleProductModal">
+                                                        <i class="fas fa-layer-group"></i>
+                                                    </button>
+                                                </a>
+                                            </section>
+                                        </td>
+                                    </tr>
+                                    <% } %>
+                            </tbody>
+                        </table>
+
+                        <nav aria-label="Page navigation example">
+                            <ul class="pagination">
+                                <% if (currentPage> 1) { %>
+                                    <li class="page-item"><a class="page-link"
+                                            href="?page=<%= currentPage - 1 %>&limit=<%= limit %>">Previous</a></li>
+                                    <% } %>
+                                        <% for (let i=1; i <=totalPages; i++) { %>
+                                            <li class="page-item <%= currentPage === i ? 'active' : '' %>">
+                                                <a class="page-link" href="?page=<%= i %>&limit=<%= limit %>">
+                                                    <%= i %>
+                                                </a>
+                                            </li>
+                                            <% } %>
+                                                <% if (currentPage < totalPages) { %>
+                                                    <li class="page-item"><a class="page-link"
+                                                            href="?page=<%= currentPage + 1 %>&limit=<%= limit %>">Next</a>
+                                                    </li>
+                                                    <% } %>
+                            </ul>
+                        </nav>
+                    </div>
+    </div>

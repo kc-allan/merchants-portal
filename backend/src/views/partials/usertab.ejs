@@ -1,0 +1,78 @@
+<!-- tabs-start-section -->
+<section>
+    <div class="header">
+        <div class="">
+            <div class="header-items">
+                <nav class="navbar navbar-expand-lg">
+                    <div class="container">
+                        <button class="navbar-toggler d-lg-none" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapsibleNavId" aria-controls="collapsibleNavId" aria-expanded="false"
+                            aria-label="Toggle navigation">
+                            <i class="fas fa-bars"></i>
+                        </button>
+                        <div class="collapse navbar-collapse" id="collapsibleNavId">
+                            <ul class="navbar-nav me-auto mt-2 mt-lg-0 ml-auto">
+                                <li class="nav-item">
+                                    <a class="nav-link active" href="/api/inventory/adminpage" aria-current="page">
+                                        <i class="fas fa-home"></i> Home
+                                    </a>
+                                </li>
+                            </ul>
+                            <div class="search-button">
+                                <form method="post" action="/api/products/search" class="d-flex my-2 my-lg-0 gap-2">
+                                    <input class="form-control search-input" type="search" name="searchTerm"
+                                        placeholder="Search" />
+                                    <button class="btn btn-search my-2 my-sm-0" type="submit">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </form>
+                            </div>
+                            <div class="user-profile-dropdown">
+                                <div class="dropdown">
+                                    <a href="#"
+                                        class="d-flex align-items-center text-white text-decoration-none dropdown-toggle"
+                                        id="dropdownUser" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <!-- Default Profile Picture -->
+                                        <img src="https://via.placeholder.com/40" alt="Profile Picture"
+                                            class="rounded-circle me-2" />
+                                        <span class="d-none d-sm-inline mx-1">Profile</span>
+                                    </a>
+                                    <ul class="dropdown-menu dropdown-menu-end text-small shadow"
+                                        aria-labelledby="dropdownUser">
+                                        <% if(isLoggedIn) { %>
+                                            <li><a class="dropdown-item"
+                                                    href="/api/user/profile/<%=user.email%>">Profile</a></li>
+                                            <li><a class="dropdown-item" href="/user/signout">Sign Out</a></li>
+                                            <li>
+                                                <hr class="dropdown-divider">
+                                            </li>
+                                            <li><a class="dropdown-item" href="#">Logged in</a></li>
+                                            <% } else { %>
+                                                <li><a class="dropdown-item" href="/user/signin">Sign In</a></li>
+                                                <li>
+                                                    <hr class="dropdown-divider">
+                                                </li>
+                                                <li><a class="dropdown-item" href="#">Not logged in</a></li>
+                                                <% } %>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- tabs-end-section -->
+
+<style>
+    .dropdown-menu {
+        min-width: 200px;
+    }
+
+    .rounded-circle {
+        width: 40px;
+        height: 40px;
+    }
+</style>

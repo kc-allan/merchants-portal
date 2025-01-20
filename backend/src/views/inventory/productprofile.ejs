@@ -1,0 +1,103 @@
+<div class="container mt-5">
+    <div class="table-responsive mt-4" id="productsAvailable">
+        <section class="d-flex justify-content-between align-items-center">
+            <h2>Products Details</h2>
+        </section>
+        <table class="table table-borderless table-lg">
+            <tbody>
+                <tr>
+                    <th scope="row">ID</th>
+                    <td><%- product._id %></td>
+                </tr>
+                <tr>
+                    <th scope="row">Category</th>
+                    <td><%- product.category %></td>
+                </tr>
+                <tr>
+                    <th scope="row">Item Name</th>
+                    <td><%- product.itemName %></td>
+                </tr>
+                <tr>
+                    <th scope="row">Brand</th>
+                    <td><%- product.brand %></td>
+                </tr>
+                <tr>
+                    <th scope="row">Model</th>
+                    <td><%- product.itemModel %></td>
+                </tr>
+                <tr>
+                    <th scope="row">Available Stock</th>
+                    <td>
+                        <span class="badge bg-primary"><%- product.availableStock %></span>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Arrival Date</th>
+                    <td><%- new Date(product.arrivalDate).toLocaleDateString() %></td>
+                </tr>
+                <tr>
+                    <th scope="row">Created At</th>
+                    <td><%- new Date(product.createdAt).toLocaleDateString() %></td>
+                </tr>
+                <tr>
+                    <th scope="row">Updated At</th>
+                    <td><%- new Date(product.updatedAt).toLocaleDateString() %></td>
+                </tr>
+                <tr>
+                    <th scope="row">Faulty Items</th>
+                    <td><%- product.faultyItems %></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <h4>Sales History</h4>
+                <% if (product.history.length===0) { %>
+                    <p class="text-muted">No sales history available yet.</p>
+                    <% } else { %>
+                        <ul class="list-group">
+                            <% product.history.forEach(sale=> { %>
+                                <li class="list-group-item">
+                                    Date: <%- new Date(sale.date).toLocaleDateString() %> - Quantity: <%- sale.quantity
+                                            %>
+                                </li>
+                                <% }); %>
+                        </ul>
+                        <% } %>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <h4>Transfer History</h4>
+                <% if (product.transferHistory.length===0) { %>
+                    <p class="text-muted">No transfer history available yet.</p>
+                    <% } else { %>
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Quantity</th>
+                                    <th scope="col">From Shop</th>
+                                    <th scope="col">To Shop</th>
+                                    <th scope="col">Type</th>
+                                    <th scope="col">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% product.transferHistory.forEach(transfer=> { %>
+                                    <tr>
+                                        <td><%- transfer.quantity %></td>
+                                        <td><%- transfer.fromShop.name %></td>
+                                        <td><%- transfer.toShop.name %></td>
+                                        <td><%- transfer.type %></td>
+                                        <td><%- new Date(transfer.date).toLocaleDateString() %></td>
+                                    </tr>
+                                    <% }); %>
+                            </tbody>
+                        </table>
+                        <% } %>
+            </div>
+        </div>
+    </div>
+</div>

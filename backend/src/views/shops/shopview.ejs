@@ -1,0 +1,110 @@
+<div class="container">
+    <h1 class="mt-5">Shop Inventory - <%= shop.name %>
+    </h1>
+    <address class="mt-2"><strong>Address:</strong>
+        <%= shop.address %>
+    </address>
+
+    <div class="table-responsive mt-4" id="productsAvailable">
+        <section class="d-flex justify-content-between align-items-center">
+            <h2>
+                mobile products available
+            </h2>
+        </section>
+
+        <table class="table table-borderless table-lg" id="mobile-table">
+            <thead>
+                <tr>
+                    <th>Item Name</th>
+                    <th>Brand</th>
+                    <th>Model</th>
+                    <th>IMEI</th>
+                    <th>Quantity</th>
+                    <th>Make sales</th>
+                    <th>Transfer</th>
+                    <th>Edit</th>
+                    <th>View</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% shop.items.forEach(item=> { %>
+                    <tr>
+                        <td>
+                            <%= item.stock.itemName %>
+                        </td>
+                        <td>
+                            <%= item.stock.brand %>
+                        </td>
+                        <td>
+                            <%= item.stock.itemModel %>
+                        </td>
+                        <td>
+                            <%= item.stock.IMEI %>
+                        </td>
+                        <td>
+                            <%= item.quantity %>
+                        </td>
+                        <td>
+                            <button class="btn btn-primary w-20 distributeButton"
+                                data-product-id="<%= item.stock._id %>" data-product-type="mobile"
+                                data-bs-toggle="modal" data-bs-target="#distributeproductmodal">
+                                make sales
+                            </button>
+                        </td>
+                        <td>
+                            <button class="btn btn-primary w-20 transferbutton" data-product-id="<%= item.stock._id %>"
+                                data-product-type="mobile" data-bs-toggle="modal"
+                                data-bs-target="#transferproductmodal">
+                                transfer
+                            </button>
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-warning addsales" data-bs-toggle="modal"
+                                data-product-id="<%= item.stock._id %>" data-bs-target="#saleProductModal">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </td>
+                        <td>
+                            <a href="<%= title === 'mobile' ? '/api/inventory/mobile/item/' + item._id : '/api/inventory/accessory/item/' + item._id %>"
+                                class="text-decoration-none text-dark">
+                                <button type="button" class="btn btn-primary addsales" data-product-id="<%= item._id %>"
+                                    data-bs-target="#saleProductModal">
+                                    <i class="fas fa-layer-group"></i>
+                                </button>
+                            </a>
+                        </td>
+                    </tr>
+                    <% }) %>
+            </tbody>
+        </table>
+
+        <!-- Pagination Controls -->
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                <li class="page-item <%= currentPage == 1 ? 'disabled' : '' %>">
+                    <a class="page-link"
+                        href="?page=<%= currentPage - 1 %>&limit=<%= limit %>&requestedItem=<%= requestedItem %>"
+                        aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+                <% for (let i=1; i <=totalPages; i++) { %>
+                    <li class="page-item <%= currentPage == i ? 'active' : '' %>">
+                        <a class="page-link"
+                            href="?page=<%= i %>&limit=<%= limit %>&requestedItem=<%= requestedItem %>">
+                            <%= i %>
+                        </a>
+                    </li>
+                    <% } %>
+                        <li class="page-item <%= currentPage == totalPages ? 'disabled' : '' %>">
+                            <a class="page-link"
+                                href="?page=<%= currentPage + 1 %>&limit=<%= limit %>&requestedItem=<%= requestedItem %>"
+                                aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+</div>

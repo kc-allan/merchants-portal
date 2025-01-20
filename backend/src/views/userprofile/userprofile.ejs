@@ -1,0 +1,330 @@
+<%- include('../partials/usertab.ejs') %>
+    <div class="container mt-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">User Profile</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="card-text"><b>Name:</b> <span>
+                                <%= user.name %>
+                            </span></p>
+                        <p class="card-text"><b>Email:</b> <span>
+                                <%= user.email %>
+                            </span></p>
+                        <p class="card-text"><b>Phone:</b> <span>
+                                <%= user.phone %>
+                            </span></p>
+                        <p class="card-text"><b>Role:</b> <span
+                                class="badge bg-<%- user.workingstatus === 'active' ? 'primary' : user.workingstatus === 'suspended' ? 'warning' : 'danger' %>">
+                                <%= user.role %>
+                            </span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="card-text"><b>Working Status:</b> <span
+                                class="badge bg-<%- user.workingstatus === 'active' ? 'primary' : user.workingstatus === 'suspended' ? 'warning' : 'danger' %>">
+                                <%= user.workingstatus %>
+                            </span></p>
+                        <!-- Conditional buttons -->
+                        <% if(title==='superuser' ) { %>
+                            <button type="button" class="btn btn-primary mb-2 updateProfileButton"
+                                data-bs-toggle="modal" data-bs-target="#updateProfileModal">
+                                Update User Profile
+                            </button>
+                            <button type="button" class="btn btn-secondary mb-2 updateStatusButton"
+                                data-bs-toggle="modal" data-bs-target="#updateStatusModal" data-user-id="<%-user._id%>"
+                                data-user-email="<%-user.email%>">
+                                Update Status
+                            </button>
+                            <button type="button" class="btn btn-info mb-2 updateRoleButton" data-bs-toggle="modal"
+                                data-bs-target="#updateRoleModal" data-user-id="<%-user._id%>"
+                                data-user-email="<%-user.email%>">
+                                Update Role
+                            </button>
+                            <button type=" button" class="btn btn-info mb-2" data-bs-toggle="modal"
+                                data-bs-target="#assignShopModal">
+                                assignment
+                            </button>
+                            <% } else { %>
+                                <button type="button" class="btn btn-primary mb-2 updateProfileButton"
+                                    data-bs-toggle="modal" data-bs-target="#updateProfileModal">
+                                    Update User Profile
+                                </button>
+                                <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row sales-history-table">
+            <div class="container mt-3">
+                <h2>Sales Report</h2>
+
+                <ul class="nav nav-tabs">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#accessories" data-toggle="tab">Accessories</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#mobile-phones" data-toggle="tab">Mobile Phones</a>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <div class="tab-pane active show" id="accessories">
+                        <h3>Accessory Sales</h3>
+                        <% if (user.AccessorySalesHistory.length> 0) { %>
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Product Name</th>
+                                        <th>Quantity</th>
+                                        <th>Price per Unit</th>
+                                        <th>Total Price</th>
+                                        <th>Commission</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% for (let i=0; i < user.AccessorySalesHistory.length; i++) { %>
+                                        <tr>
+                                            <td>
+                                                <%= i + 1 %>
+                                            </td>
+                                            <td>
+                                                <!-- Assuming you have product names populated -->
+                                                <%= user.AccessorySalesHistory[i].productId.name %>
+                                            </td>
+                                            <td>
+                                                <%= user.AccessorySalesHistory[i].quantity %>
+                                            </td>
+                                            <td>
+                                                <%= user.AccessorySalesHistory[i].price %>
+                                            </td>
+                                            <td>
+                                                <%= user.AccessorySalesHistory[i].quantity *
+                                                    user.AccessorySalesHistory[i].price %>
+                                            </td>
+                                            <td>
+                                                <%= user.AccessorySalesHistory[i].commission %>
+                                            </td>
+                                        </tr>
+                                        <% } %>
+                                </tbody>
+                            </table>
+                            <% } else { %>
+                                <p>No accessory sales found for this user.</p>
+                                <% } %>
+                    </div>
+                    <div class="tab-pane" id="mobile-phones">
+                        <h3>Mobile Phone Sales</h3>
+                        <% if (user.MobilePhoneSalesHistory.length> 0) { %>
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Product Name</th>
+                                        <th>Quantity</th>
+                                        <th>Price per Unit</th>
+                                        <th>Total Price</th>
+                                        <th>Commission</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% for (let i=0; i < user.MobilePhoneSalesHistory.length; i++) { %>
+                                        <tr>
+                                            <td>
+                                                <%= i + 1 %>
+                                            </td>
+                                            <td>
+                                                <!-- Assuming you have product names populated -->
+                                                <%= user.MobilePhoneSalesHistory[i].productId.name %>
+                                            </td>
+                                            <td>
+                                                <%= user.MobilePhoneSalesHistory[i].quantity %>
+                                            </td>
+                                            <td>
+                                                <%= user.MobilePhoneSalesHistory[i].price %>
+                                            </td>
+                                            <td>
+                                                <%= user.MobilePhoneSalesHistory[i].quantity *
+                                                    user.MobilePhoneSalesHistory[i].price %>
+                                            </td>
+                                            <td>
+                                                <%= user.MobilePhoneSalesHistory[i].commission %>
+                                            </td>
+                                        </tr>
+                                        <% } %>
+                                </tbody>
+                            </table>
+                            <% } else { %>
+                                <p>No mobile phone sales found for this user.</p>
+                                <% } %>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- //modals for user updates -->
+
+    <div class="modal fade" id="assignShopModal" tabindex="-1" aria-labelledby="assignShopModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="assignShopModalLabel">Assign User to Shop</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Form for assigning user to a shop -->
+                    <form id="assignShopForm">
+                        <div class="mb-3">
+                            <label for="selectShop" class="form-label">Select Shop</label>
+                            <select class="form-control" id="selectShop">
+                                <!-- Populate this with actual shop data -->
+                                <option value="shop1">Shop 1</option>
+                                <option value="shop2">Shop 2</option>
+                                <option value="shop3">Shop 3</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="assignStartDate" class="form-label">Start Date</label>
+                            <input type="date" class="form-control" id="assignStartDate">
+                        </div>
+                        <div class="mb-3">
+                            <label for="assignEndDate" class="form-label">End Date</label>
+                            <input type="date" class="form-control" id="assignEndDate">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Assign</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="updateProfileModal" tabindex="-1" aria-labelledby="updateProfileModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="updateProfileModalLabel">Update User Profile</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Form for updating user profile -->
+                    <form id="updateProfileForm">
+                        <div class="mb-3">
+                            <label for="updateName" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="updateName" name="updateName"
+                                value="<%= user.name %>">
+                        </div>
+                        <div class="mb-3">
+                            <label for="updatePhone" class="form-label">Phone</label>
+                            <input type="text" class="form-control" id="updatePhone" name="updatePhone"
+                                value="<%= user.phone %>">
+                        </div>
+                        <div class="mb-3">
+                            <label for="updateName" class="form-label">Password</label>
+                            <input type="text" class="form-control" id="updatePassword" name="updatePassword">
+                        </div>
+                        <!-- More fields as necessary -->
+                        <button type="submit" class="btn btn-primary">Save changes</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Status Modal for Superuser -->
+    <div class="modal fade" id="updateStatusModal" tabindex="-1" aria-labelledby="updateStatusModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="updateStatusModalLabel">Update Status</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Form for updating status -->
+                    <form id="updateStatusForm">
+                        <div class="mb-3">
+                            <label for="updateStatus" class="form-label">Status</label>
+                            <select class="form-control" id="updateStatus">
+                                <option value="active" <%- user.workingstatus==='active' ? 'selected' : '' %>>Active
+                                </option>
+                                <option value="suspended" <%- user.workingstatus==='suspended' ? 'selected' : '' %>
+                                    >Suspended</option>
+                                <option value="inactive" <%- user.workingstatus==='inactive' ? 'selected' : '' %>
+                                    >Inactive</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">save status
+                            <i id="loadingSpinner" style="display: none;" class="fas fa-spinner fa-spin spinner"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Role Modal for Superuser -->
+    <div class="modal fade" id="updateRoleModal" tabindex="-1" aria-labelledby="updateRoleModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="updateRoleModalLabel">Update Role</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Form for updating role -->
+                    <form id="updateRoleForm">
+                        <div class="mb-3">
+                            <label for="updateRole" class="form-label">Role</label>
+                            <select class="form-control" id="updateRole">
+                                <option value="user" <%- user.role==='user' ? 'selected' : '' %>>User</option>
+                                <option value="admin" <%- user.role==='admin' ? 'selected' : '' %>>Admin</option>
+                                <option value="superuser" <%- user.role==='superuser' ? 'selected' : '' %>>Superuser
+                                </option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save Role
+                            <i id="loadingSpinner" style="display: none;" class="fas fa-spinner fa-spin spinner"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Basic Info Modal for Regular Users -->
+    <div class="modal fade" id="updateBasicInfoModal" tabindex="-1" aria-labelledby="updateBasicInfoModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="updateBasicInfoModalLabel">Update Profile</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Form for updating basic info -->
+                    <form id="updateBasicInfoForm">
+                        <div class="mb-3">
+                            <label for="updateBasicName" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="updateBasicName" value="<%= user.name %>">
+                        </div>
+                        <div class="mb-3">
+                            <label for="updateBasicPhone" class="form-label">Phone</label>
+                            <input type="text" class="form-control" id="updateBasicPhone" value="<%= user.phone %>">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save changes</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <!-- jQuery -->
+        <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+        <!-- Bootstrap JS -->
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
