@@ -3,8 +3,6 @@
 ## Overview  
 The **Multi-Outlet Business Management System** is a full-stack application designed to manage the operations of an electronics business with multiple outlets. Built with modern technologies, it provides features such as centralized inventory management, sales tracking, and employee coordination. This system ensures seamless management of multiple outlets through a robust backend and a user-friendly frontend.  
 
-[**Demo Video**](https://drive.google.com/file/d/17cVOS-g3pTg8EZ0x6XXC0KRgNvCKUxtb/view?usp=sharing)
-
 ---
 
 ## Key Features  
