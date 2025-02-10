@@ -1,15 +1,21 @@
 // databases/repository/invetory-controller-repository.js
-import { Shop } from "../models/shopSchema.js";
+import { PrismaClient } from "@prisma/client";
 import { APIError, STATUS_CODE } from "../../Utils/app-error.js";
-import mongoose from "mongoose";
+const prisma = new PrismaClient();
 
 class ShopmanagementRepository {
   async createShop({ name, address }) {
     try {
-      const shop = new Shop({ name, address });
-      const newShop = await shop.save();
-      return newShop;
+      console.log("name", name);
+      const shop = await prisma.shops.create({
+        data: {
+          shopName: name,
+          address: address,
+        },
+      });
+      return shop;
     } catch (err) {
+      console.log("err", err);
       throw new APIError(
         "API Error",
         STATUS_CODE.INTERNAL_ERROR,
@@ -19,7 +25,16 @@ class ShopmanagementRepository {
   }
   async findShopById(id) {
     try {
-      const shopFound = await Shop.findById(id);
+      const shopFound = await prisma.shops.findUnique({
+        where: {
+          id: id,
+        },
+        select: {
+          id: true,
+          shopName: true,
+          address: true,
+        },
+      });
       if (!shopFound) {
         throw new APIError(
           "not found",
@@ -29,6 +44,7 @@ class ShopmanagementRepository {
       }
       return shopFound;
     } catch (err) {
+      console.log("finding shop error", err);
       throw new APIError(
         "API Error",
         STATUS_CODE.INTERNAL_ERROR,
@@ -38,63 +54,63 @@ class ShopmanagementRepository {
   }
   async findShop({ name }) {
     try {
-      const findShop = await Shop.findOne({ name })
-        .select({
-          name: 1,
-          address: 1,
-          sellers: 1,
-          newAccessory: 1,
-          newPhoneItem: 1,
-          stockItems: 1,
-          phoneItems: 1,
-        })
-        .populate({
-          path: "stockItems.categoryId",
-          model: "products",
-          select: "itemName brand itemModel minPrice maxPrice itemType"
-        })
-        .populate({
-          path: "stockItems.stock",
-          model: "accessories",
-          select: "productcost commission productcost discount stockStatus",
-        })
-        .populate({
-          path: "phoneItems.categoryId",
-          model: "products",
-          select: "itemName brand itemModel minPrice maxPrice itemType"
-        })
-        .populate({
-          path: "phoneItems.stock",
-          model: "mobiles",
-          select: "productcost IMEI commission productcost discount stockStatus",
-        })
-        .populate({
-          path: "newAccessory.categoryId",
-          model: "products",
-          select: "itemName brand itemModel minPrice maxPrice "
-        })
-        .populate({
-          path: "newAccessory.productID",
-          model: "accessories",
-          select: "productcost commission discount",
-        })
-        .populate({
-          path: "newPhoneItem.categoryId",
-          model: "products",
-          select: "itemName brand itemModel minPrice maxPrice "
-        })
-        .populate({
-          path: "newPhoneItem.productID",
-          model: "mobiles",
-          select: "productcost commission discount IMEI",
-        })
-        .populate({
-          path: "sellers",
-          model: "actors",
-          select: "name phone assignmentHistory",
-        });
+      const findShop = await prisma.shops.findFirst({
+        where: {
+          shopName: name,
+        },
+        select: {
+          id: true,
+          shopName: true,
+          address: true,
+          assignment: {
+            select: {
+              id: true,
+              actors: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phone: true
+                },
+              },
+              fromDate: true,
+              toDate: true,
+              status: true,
+            },
+          },
+          mobileItems: {
+            include: {
+              mobiles: {
+                select: {
+                  categories: true,
+                  IMEI: true,
+                  batchNumber: true,
+                  color: true,
+                  productCost: true,
+                  discount: true,
+                  stockStatus: true,
+                },
+              },
+            },
+          },
+          accessoryItems: {
+            include: {
+              accessories: {
+                select: {
+                  categories: true,
+                  productCost: true,
+                  discount: true,
+                  stockStatus: true,
+                  batchNumber: true,
+                },
+              },
+            },
+          },
+        },
+      });
       return findShop;
     } catch (err) {
+      console.log(err);
       if (err instanceof APIError) {
         throw err;
       }
@@ -107,7 +123,14 @@ class ShopmanagementRepository {
   }
   async findShopsAvailable() {
     try {
-      const findShop = await Shop.find().select({ name: 1, address: 1 });
+      const findShop = await prisma.shops.findMany({
+        select: {
+          id: true,
+          shopName: true,
+          address: true,
+        },
+      });
+
       return findShop;
     } catch (err) {
       if (err instanceof APIError) {
@@ -123,18 +146,11 @@ class ShopmanagementRepository {
 
   async findSpecificShopItem({ name, requestedItem, page = 1, limit = 10 }) {
     try {
-      const shop = await Shop.findOne({ name })
-        .select({ name: 1, sellers: 1, stockItems: 1, phoneItems: 1 })
-        .populate({
-          path: "stockItems.stock",
-          model: "Accessories",
-          select: "itemName brand itemModel minprice maxprice",
-        })
-        .populate({
-          path: "phoneItems.stock",
-          model: "Mobile",
-          select: "itemName brand itemModel minprice maxprice",
-        });
+      // Step 1: Find the shop by name
+      const shop = await prisma.shops.findFirst({
+        where: { shopName: name },
+        select: { id: true, shopName: true },
+      });
 
       if (!shop) {
         throw new APIError(
@@ -143,12 +159,43 @@ class ShopmanagementRepository {
           "Shop not found"
         );
       }
-
       let items = [];
       if (requestedItem === "phoneItems") {
-        items = shop.phoneItems.filter((item) => item.stock !== null);
+        items = await prisma.mobileItems.findMany({
+          where: {
+            shopID: shop.id,
+            status: "confirmed",
+          },
+          include: {
+            mobiles: {
+              select: {
+                itemName: true,
+                brand: true,
+                itemModel: true,
+                minprice: true,
+                maxprice: true,
+              },
+            },
+          },
+        });
       } else if (requestedItem === "stockItems") {
-        items = shop.stockItems.filter((item) => item.stock !== null);
+        items = await prisma.accessoryItems.findMany({
+          where: {
+            shopID: shop.id,
+            status: "confirmed",
+          },
+          include: {
+            accessories: {
+              select: {
+                itemName: true,
+                brand: true,
+                itemModel: true,
+                minprice: true,
+                maxprice: true,
+              },
+            },
+          },
+        });
       } else {
         throw new APIError(
           "Invalid requested item type",
@@ -157,7 +204,10 @@ class ShopmanagementRepository {
         );
       }
 
-      // Pagination logic
+      items = items.filter(
+        (item) => item.mobiles !== null || item.accessories !== null
+      );
+
       const startIndex = (page - 1) * limit;
       const paginatedItems = items.slice(startIndex, startIndex + limit);
 
@@ -178,11 +228,10 @@ class ShopmanagementRepository {
       );
     }
   }
-
   async updateShopDetails(shopID, shopDetails) {
     try {
       //FINDTHESHOP
-      const shop = await Shop.findById(shopID);
+      const shop = await this.findShopById(shopID);
       if (!shop) {
         throw new APIError(
           "Shop not found",
@@ -190,11 +239,16 @@ class ShopmanagementRepository {
           "Shop not found"
         );
       }
-      const updatedShop = await Shop.findByIdAndUpdate(shopID, shopDetails, {
-        new: true,
+      const updatedShop = await prisma.shops.update({
+        where: { id: shopID },
+        data: shopDetails,
       });
+
       return updatedShop;
     } catch (err) {
+      if (err instanceof APIError) {
+        throw err;
+      }
       throw new APIError(
         "API Error",
         STATUS_CODE.INTERNAL_ERROR,
@@ -203,210 +257,227 @@ class ShopmanagementRepository {
     }
   }
 
-  async updateSalesOfAccessory(shopId, productId, soldUnits) {
-    console.log("@@#soldunits", soldUnits)
+  async updateSalesOfAccessory(shopId, transferId, soldUnits) {
+    console.log("@@#soldunits", soldUnits);
     try {
-      const updateSalesOfAccessory = await Shop.findOneAndUpdate(
-        { _id: shopId, "stockItems.stock": productId },
-        {
-          $inc: { "stockItems.$.quantity": -soldUnits },
+      const accessoryItemUpdate = await prisma.accessoryItems.updateMany({
+        where: {
+          shopID: shopId,
+          transferId: transferId
         },
-        { new: true }
-      )
-      return updateSalesOfAccessory
-    }
-    catch (err) {
-      console.log(err)
-      throw new APIError("update error", STATUS_CODE.INTERNAL_ERROR, "server error")
-    }
-  }
-
-  async updateSalesOfPhone(shopId, productID, soldUnits) {
-    try {
-      const updateSalesOfPhone = await Shop.findOneAndUpdate(
-        { _id: shopId, "phoneItems.stock": productID },
-        {
-          $inc: { "phoneItems.$.quantity": -soldUnits },
-        },
-        { new: true }
-      )
-      return updateSalesOfPhone
-    }
-    catch (err) {
-      console.log(err)
-      throw new APIError("update error", STATUS_CODE.INTERNAL_ERROR, "server error")
-    }
-  }
-  async searchProductName(productName, shopName) {
-    console.log("#@#", shopName)
-
-    try {
-      const regexPattern = new RegExp(`^${productName}`, "i");
-
-      // Find the shop by name
-      const shop = await Shop.findOne({ name: shopName }).lean();
-      if (!shop) {
-        throw new Error(`Shop with name ${shopName} not found`);
-      }
-      // Search for products in phoneItems and populate CategoryId
-      const phoneItems = await Shop.aggregate([
-        { $match: { name: { $regex: `^${shopName}$`, $options: "i" } } },
-        { $unwind: "$phoneItems" },
-        {
-          $lookup: {
-            from: "products",
-            localField: "phoneItems.categoryId",
-            foreignField: "_id",
-            as: "phoneItems.categoryDetails",
-          },
-        },
-        { $unwind: { path: "$phoneItems.categoryDetails", preserveNullAndEmptyArrays: true } }, // Unwind categoryDetails
-        {
-          $match: {
-            $or: [
-              { "phoneItems.categoryDetails.itemName": { $regex: regexPattern } },
-              { "phoneItems.categoryDetails.itemModel": { $regex: regexPattern } },
-              { "phoneItems.categoryDetails.brand": { $regex: regexPattern } },
-            ],
-          },
-        },
-        {
-          $lookup: {
-            from: "mobiles",
-            localField: "phoneItems.stock",
-            foreignField: "_id",
-            as: "phoneItems.stockDetails",
-          }
-        },
-        { $unwind: { path: "$phoneItems.stockDetails", preserveNullAndEmptyArrays: true } },
-
-        {
-          $project: {
-            "phoneItems.stock": 1,
-            "phoneItems.quantity": 1,
-            "phoneItems.categoryDetails.itemName": 1,
-            "phoneItems.categoryDetails.itemModel": 1,
-            "phoneItems.categoryDetails.brand": 1,
-            "phoneItems.categoryDetails.maxPrice": 1,
-            "phoneItems.categoryDetails.minPrice": 1,
-            "phoneItems.stockDetails.IMEI": 1,
-            "phoneItems.stockDetails.serialNumber": 1,
-            "phoneItems.stockDetails.color": 1,
-            "phoneItems.stockDetails.stockStatus": 1,
-            "phoneItems.stockDetails.commission": 1
-          },
-        },
-      ]);
-
-      console.log("Phone Items:", JSON.stringify(phoneItems, null, 2));
-      const matchingImei = await Shop.aggregate([
-        { $match: { name: { $regex: `^${shopName}$`, $options: "i" } } },
-        { $unwind: "$phoneItems" },
-        {
-          $lookup: {
-            from: "mobiles",
-            localField: "phoneItems.stock",
-            foreignField: "_id",
-            as: "phoneItems.stockDetails"
-          },
-        },
-        { $unwind: { path: "$phoneItems.stock", preserveNullAndEmptyArrays: true } },
-        {
-          $match: {
-            $or: [
-              { "phoneItems.stockDetails.IMEI": { $regex: regexPattern } },
-              { "phoneItems.stockDetails.serialNumber": { $regex: regexPattern } }
-            ]
-          }
-        },
-        {
-          $lookup: {
-            from: "products",
-            localField: "phoneItems.categoryId",
-            foreignField: "_id",
-            as: "phoneItems.categoryDetails"
-          }
-        },
-        { $unwind: { path: "$phoneItems.categoryDetails", preserveNullAndEmptyArrays: true } },
-        {
-          $project: {
-            "phoneItems.quantity": 1,
-            "phoneItems.categoryDetails.itemName": 1,
-            "phoneItems.categoryDetails.itemModel": 1,
-            "phoneItems.categoryDetails.brand": 1,
-            "phoneItems.categoryDetails.maxPrice": 1,
-            "phoneItems.categoryDetails.minPrice": 1,
-            "phoneItems.stockDetails.IMEI": 1,
-            "phoneItems.stockDetails.serialNumber": 1,
-            "phoneItems.stockDetails.color": 1,
-            "phoneItems.stockDetails.stockStatus": 1,
-            "phoneItems.stockDetails.commission": 1
+        data: {
+          quantity: {
+            decrement: soldUnits
           }
         }
-      ])
-      const stockItems = await Shop.aggregate([
-        { $match: { name: shopName } },
-        { $unwind: "$stockItems" },
-        {
-          $lookup: {
-            from: "products",
-            localField: "stockItems.categoryId",
-            foreignField: "_id",
-            as: "stockItems.categoryDetails",
+      });
+      return accessoryItemUpdate;
+    } catch (err) {
+      console.log(err);
+      if (err instanceof APIError) {
+        throw err;
+      }
+      throw new APIError(
+        "Update error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Server error"
+      );
+    }
+  }
+  async updateSalesOfPhone(shopId, productID, soldUnits) {
+    try {
+      const mobileItem = await prisma.mobileItems.findFirst({
+        where: {
+          shopID: shopId,
+          mobileID: productID,
+          status: "confirmed",
+        },
+      });
+      if (!mobileItem) {
+        throw new APIError(
+          "not found",
+          STATUS_CODE.BAD_REQUEST,
+          "mobile item not found"
+        );
+      }
+
+      const updateSalesOfPhone = await prisma.mobileItems.update({
+        where: {
+          id: mobileItem.id,
+        },
+        data: {
+          quantity: {
+            decrement: soldUnits,
+          },
+          status: "sold",
+          updatedAt: new Date(),
+        },
+      });
+
+      return updateSalesOfPhone;
+    } catch (err) {
+      console.log("error in updating", err);
+      if (err instanceof APIError) {
+        throw err;
+      }
+      throw new APIError(
+        "update error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "server error"
+      );
+    }
+  }
+
+  async searchProductName(productName, shopName) {
+    console.log("#@#", shopName);
+
+    try {
+      // Step 1: Find the shop by name
+      const shop = await prisma.shops.findFirst({
+        where: { shopName: shopName },
+        select: { id: true },
+      });
+
+      if (!shop) {
+        throw new APIError(`Shop with name ${shopName} not found`);
+      }
+
+      // Convert productName to lowercase for case-insensitive search
+      const searchTerm = productName.toLowerCase();
+
+      // Step 2: Search for products in phoneItems (mobileItems)
+      const phoneItems = await prisma.mobileItems.findMany({
+        where: {
+          shopID: shop.id,
+          mobiles: {
+            categories: {
+              OR: [
+                { itemName: { contains: searchTerm } },
+                { itemModel: { contains: searchTerm } },
+                { brand: { contains: searchTerm } },
+              ],
+            },
           },
         },
-        { $unwind: "$stockItems.categoryDetails" },
-        {
-          $match: {
-            $or: [
-              { "stockItems.categoryDetails.itemName": { $regex: regexPattern } },
-              { "stockItems.categoryDetails.itemModel": { $regex: regexPattern } },
-              { "stockItems.categoryDetails.brand": { $regex: regexPattern } },
-            ],
+        select: {
+          mobiles: {
+            select: {
+              categories: {
+                select: {
+                  itemName: true,
+                  itemModel: true,
+                  brand: true,
+                },
+              },
+              IMEI: true,
+              color: true,
+              stockStatus: true,
+              commission: true,
+            },
           },
         },
-        {
-          $lookup: {
-            from: "accessories",
-            localField: "stockItems.stock",
-            foreignField: "_id",
-            as: "stockItems.stockDetails",
-          }
-        },
-        { $unwind: { path: "$stockItems.stockDetails", preserveNullAndEmptyArrays: true } },
-        {
-          $project: {
-            "stockItems.stock": 1,
-            "stockItems.quantity": 1,
-            "stockItems.categoryDetails.itemName": 1,
-            "stockItems.categoryDetails.itemModel": 1,
-            "stockItems.categoryDetails.brand": 1,
-            "stockItems.stockDetails.batchNumber": 1,
-            "stockItems.stockDetails.serialNumber": 1,
-            "stockItems.stockDetails.stockStatus": 1,
-            "stockItems.stockDetails.commission": 1
+      });
+
+      //console.log("Phone Items:", JSON.stringify(phoneItems, null, 2));
+
+      // Step 3: Search for products by IMEI or serialNumber in mobileItems
+      const matchingImei = await prisma.mobileItems.findMany({
+        where: {
+          shopID: shop.id,
+          mobiles: {
+            OR: [{ IMEI: { contains: searchTerm } }],
           },
         },
-      ])
+        select: {
+          mobiles: {
+            select: {
+              categories: {
+                select: {
+                  itemName: true,
+                  itemModel: true,
+                  brand: true,
+                },
+              },
+              IMEI: true,
+              color: true,
+              stockStatus: true,
+              commission: true,
+            },
+          },
+        },
+      });
+
+      // Step 4: Search for products in stockItems (accessoryItems)
+      const stockItems = await prisma.accessoryItems.findMany({
+        where: {
+          shopID: shop.id,
+          accessories: {
+            categories: {
+              OR: [
+                { itemName: { contains: searchTerm } },
+                { itemModel: { contains: searchTerm } },
+                { brand: { contains: searchTerm } },
+              ],
+            },
+          },
+        },
+        select: {
+          accessories: {
+            select: {
+              categories: {
+                select: {
+                  itemName: true,
+                  itemModel: true,
+                  brand: true,
+                },
+              },
+            },
+            select: {
+              batchNumber: true,
+              stockStatus: true,
+              commission: true,
+            },
+          },
+        },
+      });
+
       return {
         phoneItems,
         stockItems,
-        matchingImei
+        matchingImei,
       };
     } catch (err) {
-      console.error("Error in searchProductName:", err);
-      throw err;
+      console.log("erroror", err);
+      if (err instanceof APIError) {
+        throw err;
+      }
+      throw new APIError(
+        "err fetching products",
+        STATUS_CODE.INTERNAL_ERROR,
+        "internal server errorr"
+      );
     }
   }
-  async newAddedphoneItem(id, newItem) {
+  async newAddedphoneItem(newItem) {
     try {
-      const updatedShop = await Shop.findByIdAndUpdate(
-        id,
-        { $push: { newPhoneItem: newItem } },
-        { new: true }
-      );
+      console.log("newitemOadd", newItem);
+      const updatedShop = await prisma.mobileItems.create({
+        data: {
+          status: newItem.status,
+          productStatus: newItem.productStatus,
+          transferId: newItem.transferId,
+          quantity: newItem.quantity,
+          shops: {
+            connect: { id: newItem.shopID },
+          },
+          mobiles: {
+            connect: { id: newItem.productID },
+          },
+        },
+      });
       return updatedShop;
     } catch (err) {
+      console.error("Error in newAddedphoneItem:", err);
       throw new APIError(
         "database error",
         STATUS_CODE.INTERNAL_ERROR,
@@ -414,31 +485,21 @@ class ShopmanagementRepository {
       );
     }
   }
-  async addNewAccessory(id, newItem) {
+  //might  delete later
+  async updateConfirmationOfProduct(shopId, newPhoneItemId, userName) {
     try {
-      const updatedShop = await Shop.findByIdAndUpdate(
-        id,
-        { $push: { newAccessory: newItem } },
-        { new: true }
-      );
-      return updatedShop;
-    } catch (err) {
-      console.log("343", err)
-      throw new APIError(
-        "database error",
-        STATUS_CODE.INTERNAL_ERROR,
-        "database error"
-      );
-    }
-  }
-  async addPhoneStock(id, newItem) {
-    try {
-      const updatedShop = await Shop.findByIdAndUpdate(
-        id,
-        { $push: { phoneItems: newItem } },
-        { new: true }
-      );
-      return updatedShop;
+      const updatedNewPhoneItem = await prisma.mobileItems.update({
+        where: {
+          id: newPhoneItemId,
+        },
+        data: {
+          status: "confirmed",
+          confirmedBy: userName,
+          updatedAt: new Date.now(),
+        },
+      });
+
+      return updatedNewPhoneItem;
     } catch (err) {
       throw new APIError(
         "Database error",
@@ -447,15 +508,49 @@ class ShopmanagementRepository {
       );
     }
   }
-  async addAcessoryStock(id, newItem) {
+  async addNewAccessory(shopId, newItem) {
     try {
-      const updatedShop = await Shop.findByIdAndUpdate(
-        id,
-        { $push: { stockItems: newItem } },
-        { new: true }
-      );
-      return updatedShop;
+      const newAccessoryItem = await prisma.accessoryItems.create({
+        data: {
+          accessoryID: newItem.productID,
+          quantity: newItem.quantity,
+          shopID: shopId,
+          status: newItem.status || "pending",
+          transferId: newItem.transferId,
+          productStatus: newItem.productStatus || "new stock",
+          confirmedBy: null,
+          quantity: newItem.quantity || 1,
+          createdAt: new Date(),
+        },
+      });
+
+      return newAccessoryItem;
     } catch (err) {
+      console.error("Error adding new accessory item:", err);
+      throw new APIError(
+        "Database error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Unable to add new accessory item"
+      );
+    }
+  }
+
+  async updateConfirmationOfAccessory(shopId, transferproductId, userId) {
+    try {
+      const updatedNewAccessoryItem = await prisma.accessoryItems.updateMany({
+        where: {
+          shopID: shopId,
+          transferId: transferproductId,
+        },
+        data: {
+          status: "confirmed",
+          confirmedBy: userId,
+          updatedAt: new Date(),
+        },
+      });
+      return updatedNewAccessoryItem;
+    } catch (err) {
+      console.log("err", err);
       throw new APIError(
         "Database error",
         STATUS_CODE.INTERNAL_ERROR,
@@ -466,13 +561,17 @@ class ShopmanagementRepository {
 
   async updateAccessoryQuantity(shopId, accessoryId, quantity) {
     try {
-      const updatedNewAccessoryItem = await Shop.findOneAndUpdate(
-        { _id: shopId, "stockItems.stock": accessoryId },
-        {
-          $inc: { "stockItems.$.quantity": quantity },
+      const updatedNewAccessoryItem = await prisma.accessoryItems.updateMany({
+        where: {
+          shopID: shopId,
+          accessoryID: accessoryId,
         },
-        { new: true }
-      );
+        data: {
+          quantity: {
+            increment: quantity,
+          },
+        },
+      });
       return updatedNewAccessoryItem;
     } catch (err) {
       throw new APIError(
@@ -481,53 +580,6 @@ class ShopmanagementRepository {
         "internal server error"
       );
     }
-  }
-
-  async updateConfirmationOfProduct(shopId, newPhoneItemId, userName) {
-    try {
-      const updatedNewPhoneItem = await Shop.findOneAndUpdate(
-        { _id: shopId, "newPhoneItem._id": newPhoneItemId },
-        {
-          $set: {
-            "newPhoneItem.$.status": "confirmed",
-            "newPhoneItem.$.confirmedBy": userName,
-          },
-        },
-        { new: true }
-      );
-      return updatedNewPhoneItem;
-    } catch (err) {
-      throw new APIError(
-        "Database error",
-        STATUS_CODE.INTERNAL_ERROR,
-        "internal server error"
-      );
-    }
-  }
-  async updateConfirmationOfAccessory(shopId, newAccessoryItemId, userName) {
-    try {
-      const updatedNewAccessoryItem = await Shop.findOneAndUpdate(
-        { _id: shopId, "newAccessory._id": newAccessoryItemId },
-        {
-          $set: {
-            "newAccessory.$.status": "confirmed",
-            "newAccessory.$.confirmedBy": userName,
-          },
-        },
-        { new: true }
-      );
-      return updatedNewAccessoryItem;
-    } catch (err) {
-      console.log("err", err)
-      throw new APIError(
-        "Database error",
-        STATUS_CODE.INTERNAL_ERROR,
-        "internal server error"
-      );
-    }
-  }
-  async saveShop(shop) {
-    await shop.save();
   }
 }
 

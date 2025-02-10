@@ -5,6 +5,7 @@ const distributionManager = new distributionService();
 const handleBulkDistibution = async (req, res) => {
     try {
         const user = req.user;
+        console.log(user)
         const { bulkDistribution, shopDetails, category } = req.body
 
         console.log(req.body)
@@ -24,14 +25,14 @@ const handleBulkDistibution = async (req, res) => {
 
         const mainShop = shopDetails.mainShop;
         const distributedShop = shopDetails.distributedShop;
-        const userName = user.name;
+        const userId = parseInt(user.id, 10);
         const processDistribution = (distributions, distributionMethod) => {
             return distributions.map((distribution) => {
                 const distributionData = {
                     ...distribution,
                     mainShop: mainShop,
                     distributedShop: distributedShop,
-                    userName: userName
+                    userId: userId
                 }
                 return distributionMethod.call(distributionManager, distributionData)
             })

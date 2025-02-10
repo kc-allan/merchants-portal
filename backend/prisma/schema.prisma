@@ -1,0 +1,396 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model accessories {
+  id                       Int                        @id @unique(map: "_id_UNIQUE") @default(autoincrement()) @map("_id")
+  batchNumber              String                     @unique(map: "itemName_UNIQUE") @db.VarChar(255)
+  productType              String?                    @db.VarChar(255)
+  CategoryId               Int
+  faultyItems              Int?                       @default(0) @db.UnsignedInt
+  barcodePath              String?                    @db.VarChar(255)
+  createdAt                DateTime?                  @default(now()) @db.DateTime(0)
+  availableStock           Int?                       @default(0) @db.UnsignedInt
+  stockStatus              String?                    @default("available") @db.VarChar(255)
+  color                    String?                    @default("white") @db.VarChar(255)
+  productCost              Int?
+  commission               Int?
+  discount                 Int?
+  supplierName             String?                    @db.VarChar(255)
+  updatedAt                DateTime?                  @default(now()) @db.DateTime(0)
+  categories               categories                 @relation(fields: [CategoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessories_1")
+  accessoryHistory         accessoryHistory[]
+  accessoryItems           accessoryItems[]
+  accessorysales           accessorysales[]
+  accessorytransferhistory accessorytransferhistory[]
+
+  @@index([CategoryId], map: "fk_accessories_1_idx")
+}
+
+model accessoryHistory {
+  id          Int         @id @unique(map: "_id_UNIQUE") @default(autoincrement()) @map("_id")
+  addedBy     Int
+  createdAt   DateTime?   @default(now()) @db.DateTime(0)
+  shopId      Int
+  type        String      @default("new stock") @db.VarChar(45)
+  quantity    Int         @db.UnsignedInt
+  productID   Int
+  accessories accessories @relation(fields: [productID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_acccessoryHistory_accessory__1")
+  shops       shops       @relation(fields: [shopId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessoryHistory_1")
+  actors      actors      @relation(fields: [addedBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessoryHistory_2")
+
+  @@index([productID], map: "fk_acccessoryHistory_1_idx")
+  @@index([shopId], map: "fk_accessoryHistory_1_idx")
+  @@index([addedBy], map: "fk_accessoryHistory_2_idx")
+}
+
+model accessoryItems {
+  id            Int         @id @unique(map: "_id_UNIQUE") @default(autoincrement()) @map("_id")
+  accessoryID   Int
+  shopID        Int
+  status        String      @db.VarChar(45)
+  createdAt     DateTime?   @default(now()) @db.DateTime(0)
+  quantity      Int?        @db.UnsignedInt
+  productStatus String?     @default("new stock") @db.VarChar(255)
+  updatedAt     DateTime?   @default(now()) @db.DateTime(0)
+  transferId    Int?
+  confirmedBy   Int?
+  shops         shops       @relation(fields: [shopID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessoryItems_1")
+  accessories   accessories @relation(fields: [accessoryID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessoryItems_2")
+  actors        actors?     @relation(fields: [confirmedBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_confirmedBy_actor_2")
+
+  @@index([shopID], map: "fk_accessoryItems_1_idx")
+  @@index([accessoryID], map: "fk_accessoryItems_2_idx")
+  @@index([confirmedBy], map: "fk_confirmedBy_actor_2")
+}
+
+model accessorysales {
+  id                  Int                               @id @unique(map: "_id_UNIQUE") @default(autoincrement()) @map("_id")
+  productID           Int
+  shopID              Int
+  sellerId            Int
+  soldPrice           Decimal                           @db.Decimal(10, 2)
+  profit              Int                               @db.UnsignedInt
+  customerName        String?                           @default("doe") @db.VarChar(45)
+  customerEmail       String?                           @default("doe@gmail.com") @db.VarChar(45)
+  customerPhoneNumber String?                           @default("07000000") @db.VarChar(45)
+  paymentmethod       accessorysales_paymentmethod?
+  finance             Int
+  createdAt           DateTime?                         @default(now()) @db.DateTime(0)
+  commisssionStatus   accessorysales_commisssionStatus?
+  quantity            Int?                              @default(0)
+  commission          Int?                              @default(0)
+  categoryId          Int?
+  financer            String?                           @default("captech") @db.VarChar(255)
+  financeStatus       String?                           @default("paid") @db.VarChar(255)
+  financeAmount       Int?                              @default(0)
+  accessories         accessories                       @relation(fields: [productID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessorysales_1")
+  actors              actors                            @relation(fields: [sellerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessorysales_2")
+  shops               shops                             @relation(fields: [shopID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessorysales_3")
+  categories          categories?                       @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessorysales_category")
+
+  @@index([productID], map: "fk_accessorysales_1_idx")
+  @@index([sellerId], map: "fk_accessorysales_2_idx")
+  @@index([shopID], map: "fk_accessorysales_3_idx")
+  @@index([categoryId], map: "fk_accessorysales_category")
+}
+
+model accessorytransferhistory {
+  id                                                  Int                            @id @unique(map: "_id_UNIQUE") @default(autoincrement()) @map("_id")
+  createdAt                                           DateTime?                      @default(now()) @db.DateTime(0)
+  fromshop                                            Int
+  toshop                                              Int
+  status                                              String?                        @default("pending") @db.VarChar(45)
+  type                                                accessorytransferhistory_type?
+  productID                                           Int
+  confirmedBy                                         Int?
+  transferdBy                                         Int?
+  quantity                                            Int?                           @db.UnsignedInt
+  updatedAt                                           DateTime?                      @default(now()) @db.DateTime(0)
+  accessories                                         accessories                    @relation(fields: [productID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessorytransferhistory_1")
+  shops_accessorytransferhistory_fromshopToshops      shops                          @relation("accessorytransferhistory_fromshopToshops", fields: [fromshop], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessorytransferhistory_2")
+  shops_accessorytransferhistory_toshopToshops        shops                          @relation("accessorytransferhistory_toshopToshops", fields: [toshop], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessorytransferhistory_3")
+  actors_accessorytransferhistory_confirmedByToactors actors?                        @relation("accessorytransferhistory_confirmedByToactors", fields: [confirmedBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_confirmedBy_actor")
+  actors_accessorytransferhistory_transferdByToactors actors?                        @relation("accessorytransferhistory_transferdByToactors", fields: [transferdBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_transferdBy_actor")
+
+  @@index([productID], map: "fk_accessorytransferhistory_1_idx")
+  @@index([fromshop], map: "fk_accessorytransferhistory_2_idx")
+  @@index([toshop], map: "fk_accessorytransferhistory_3_idx")
+  @@index([confirmedBy], map: "fk_confirmedBy_actor")
+  @@index([transferdBy], map: "fk_transferdBy_actor")
+}
+
+model actors {
+  id                                                                    Int                        @id @unique(map: "_id_UNIQUE") @default(autoincrement()) @map("_id")
+  name                                                                  String                     @db.VarChar(255)
+  nextofkinname                                                         String                     @db.VarChar(255)
+  nextofkinphonenumber                                                  String                     @db.VarChar(255)
+  password                                                              String                     @db.VarChar(255)
+  email                                                                 String                     @unique @db.VarChar(255)
+  workingstatus                                                         String?                    @default("inactive") @db.VarChar(45)
+  phone                                                                 String                     @unique @db.VarChar(45)
+  role                                                                  String?                    @default("seller") @db.VarChar(45)
+  Idimagebackward                                                       String                     @default("https://www.linkedin.com/default_profile_picture.png") @db.VarChar(255)
+  Idimagefront                                                          String                     @default("https://www.linkedin.com/default_profile_picture.png") @db.VarChar(255)
+  profileimage                                                          String?                    @default("https://www.linkedin.com/default_profile_picture.png") @db.VarChar(255)
+  createdAt                                                             DateTime?                  @default(now()) @db.DateTime(0)
+  accessoryHistory                                                      accessoryHistory[]
+  accessoryItems                                                        accessoryItems[]
+  accessorysales                                                        accessorysales[]
+  accessorytransferhistory_accessorytransferhistory_confirmedByToactors accessorytransferhistory[] @relation("accessorytransferhistory_confirmedByToactors")
+  accessorytransferhistory_accessorytransferhistory_transferdByToactors accessorytransferhistory[] @relation("accessorytransferhistory_transferdByToactors")
+  assignment                                                            assignment[]
+  mobileHistory                                                         mobileHistory[]
+  mobileHistory_mobileHistory_sellerIdToactors                          mobileHistory[]            @relation("mobileHistory_sellerIdToactors")
+  mobileItems                                                           mobileItems[]
+  mobilesales                                                           mobilesales[]
+  mobiletransferHistory_mobiletransferHistory_confirmedByToactors       mobiletransferHistory[]    @relation("mobiletransferHistory_confirmedByToactors")
+  mobiletransferHistory_mobiletransferHistory_transferdByToactors       mobiletransferHistory[]    @relation("mobiletransferHistory_transferdByToactors")
+}
+
+model assignment {
+  id        Int                @id @unique(map: "_id_UNIQUE") @default(autoincrement()) @map("_id")
+  userID    Int
+  shopID    Int
+  fromDate  DateTime           @db.DateTime(0)
+  toDate    DateTime           @db.DateTime(0)
+  status    assignment_status?
+  updatedAt DateTime?          @default(now()) @db.Timestamp(0)
+  shops     shops              @relation(fields: [shopID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_assignment_1")
+  actors    actors             @relation(fields: [userID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_assignment_2")
+
+  @@index([shopID], map: "fk_assignment_1_idx")
+  @@index([userID], map: "fk_assignment_2_idx")
+}
+
+model categories {
+  id             Int                  @id @unique(map: "_id_UNIQUE") @default(autoincrement()) @map("_id")
+  itemName       String?              @unique(map: "itemName_UNIQUE") @db.VarChar(45)
+  itemModel      String               @unique(map: "itemModel_UNIQUE") @db.VarChar(45)
+  minPrice       Int
+  itemType       categories_itemType?
+  brand          String?              @default("unknown") @db.VarChar(255)
+  maxPrice       Int
+  category       String?              @db.VarChar(45)
+  accessories    accessories[]
+  accessorysales accessorysales[]
+  mobiles        mobiles[]
+  mobilesales    mobilesales[]
+}
+
+model mobileHistory {
+  id                                    Int       @id @default(autoincrement()) @map("_id")
+  addedBy                               Int
+  createdAt                             DateTime? @default(now()) @db.DateTime(0)
+  shopId                                Int
+  type                                  String    @default("new stock") @db.VarChar(45)
+  productID                             Int
+  sellerId                              Int?
+  updatedAt                             DateTime? @default(now()) @db.DateTime(0)
+  mobiles                               mobiles   @relation(fields: [productID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobileHistory_1")
+  actors                                actors    @relation(fields: [addedBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobileHistory_2")
+  shops                                 shops     @relation(fields: [shopId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobileHistory_3")
+  actors_mobileHistory_sellerIdToactors actors?   @relation("mobileHistory_sellerIdToactors", fields: [sellerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobileHistory_seller")
+
+  @@index([productID], map: "fk_mobileHistory_1_idx")
+  @@index([addedBy], map: "fk_mobileHistory_2_idx")
+  @@index([shopId], map: "fk_mobileHistory_3_idx")
+  @@index([sellerId], map: "fk_mobileHistory_seller")
+}
+
+model mobileItems {
+  id            Int       @id @unique(map: "_id_UNIQUE") @default(autoincrement()) @map("_id")
+  mobileID      Int
+  shopID        Int
+  status        String    @default("pending") @db.VarChar(45)
+  confirmedBy   Int?
+  transferId    Int?
+  createdAt     DateTime? @default(now()) @db.DateTime(0)
+  productStatus String?   @default("new stock") @db.VarChar(255)
+  quantity      Int?      @default(0) @db.UnsignedInt
+  updatedAt     DateTime? @default(now()) @db.DateTime(0)
+  shops         shops     @relation(fields: [shopID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobileItems_1")
+  mobiles       mobiles   @relation(fields: [mobileID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobileItems_2")
+  actors        actors?   @relation(fields: [confirmedBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobileItems_confirmedBy")
+
+  @@index([shopID], map: "fk_mobileItems_1_idx")
+  @@index([mobileID], map: "fk_mobileItems_2_idx")
+  @@index([confirmedBy], map: "fk_mobileItems_confirmedBy")
+}
+
+model mobilefinance {
+  id            Int           @id @unique(map: "_id_UNIQUE") @default(autoincrement()) @map("_id")
+  financer      String        @default("captech") @db.VarChar(45)
+  financeAmount Decimal       @default(0.00) @db.Decimal(10, 2)
+  financeStatus String?       @default("paid") @db.VarChar(45)
+  productID     Int
+  mobiles       mobiles       @relation(fields: [productID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_financer_1")
+  mobilesales   mobilesales[]
+
+  @@index([productID], map: "fk_financer_1_idx")
+}
+
+model mobiles {
+  id                    Int                     @id @unique(map: "_id_UNIQUE") @default(autoincrement()) @map("_id")
+  IMEI                  String?                 @unique(map: "IMEI_UNIQUE") @db.VarChar(255)
+  batchNumber           String                  @default("0") @db.VarChar(255)
+  availableStock        Int                     @default(1) @db.UnsignedInt
+  commission            Decimal                 @default(0.00) @db.Decimal(10, 2)
+  discount              Decimal                 @default(0.00) @db.Decimal(10, 2)
+  productCost           Decimal                 @db.Decimal(10, 2)
+  color                 String?                 @default("white") @db.VarChar(255)
+  stockStatus           String?                 @default("available") @db.VarChar(45)
+  CategoryId            Int
+  barcodePath           String?                 @db.VarChar(255)
+  createdAt             DateTime?               @default(now()) @db.DateTime(0)
+  storage               String?                 @db.VarChar(45)
+  phoneType             String?                 @db.VarChar(45)
+  updatedAt             DateTime?               @default(now()) @db.DateTime(0)
+  itemType              String?                 @default("mobiles") @db.VarChar(45)
+  supplierName          String?                 @db.VarChar(255)
+  mobileHistory         mobileHistory[]
+  mobileItems           mobileItems[]
+  mobilefinance         mobilefinance[]
+  categories            categories              @relation(fields: [CategoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobiles_1")
+  mobilesales           mobilesales[]
+  mobiletransferHistory mobiletransferHistory[]
+
+  @@index([CategoryId], map: "fk_mobiles_1_idx")
+}
+
+model mobilesales {
+  id                  Int                            @id @unique(map: "_id_UNIQUE") @default(autoincrement()) @map("_id")
+  productID           Int
+  shopID              Int
+  sellerId            Int
+  customerName        String?                        @default("doe") @db.VarChar(45)
+  customerEmail       String?                        @default("doe@gmail.com") @db.VarChar(45)
+  customerPhoneNumber String?                        @default("07000000") @db.VarChar(45)
+  paymentmethod       mobilesales_paymentmethod?
+  finance             Int
+  createdAt           DateTime?                      @default(now()) @db.DateTime(0)
+  commisssionStatus   mobilesales_commisssionStatus?
+  quantity            Int?                           @default(0)
+  salesType           String?                        @default("direct") @db.VarChar(255)
+  financer            String?                        @default("captech") @db.VarChar(255)
+  financeStatus       String?                        @default("captech") @db.VarChar(255)
+  financeAmount       Int?                           @default(0)
+  categoryId          Int?
+  commission          Int?                           @default(0)
+  profit              Int?                           @default(0)
+  soldPrice           Int?                           @default(0)
+  categories          categories?                    @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobileSales_category")
+  mobiles             mobiles                        @relation(fields: [productID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobilesales_1")
+  actors              actors                         @relation(fields: [sellerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobilesales_2")
+  shops               shops                          @relation(fields: [shopID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobilesales_3")
+  mobilefinance       mobilefinance                  @relation(fields: [finance], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobilesales_4")
+
+  @@index([productID], map: "fk_mobilesales_1_idx")
+  @@index([sellerId], map: "fk_mobilesales_2_idx")
+  @@index([shopID], map: "fk_mobilesales_3_idx")
+  @@index([finance], map: "fk_mobilesales_4_idx")
+  @@index([categoryId], map: "fk_mobileSales_category")
+}
+
+model shops {
+  id                                                                Int                        @id @unique(map: "_id_UNIQUE") @default(autoincrement()) @map("_id")
+  shopName                                                          String                     @db.VarChar(25)
+  address                                                           String                     @db.VarChar(25)
+  accessoryHistory                                                  accessoryHistory[]
+  accessoryItems                                                    accessoryItems[]
+  accessorysales                                                    accessorysales[]
+  accessorytransferhistory_accessorytransferhistory_fromshopToshops accessorytransferhistory[] @relation("accessorytransferhistory_fromshopToshops")
+  accessorytransferhistory_accessorytransferhistory_toshopToshops   accessorytransferhistory[] @relation("accessorytransferhistory_toshopToshops")
+  assignment                                                        assignment[]
+  mobileHistory                                                     mobileHistory[]
+  mobileItems                                                       mobileItems[]
+  mobilesales                                                       mobilesales[]
+  mobiletransferHistory_mobiletransferHistory_fromshopToshops       mobiletransferHistory[]    @relation("mobiletransferHistory_fromshopToshops")
+  mobiletransferHistory_mobiletransferHistory_toshopToshops         mobiletransferHistory[]    @relation("mobiletransferHistory_toshopToshops")
+}
+
+model supplier {
+  id              Int     @id @unique(map: "_id_UNIQUE") @default(autoincrement()) @map("_id")
+  supplierAddress String  @db.VarChar(45)
+  supplierName    String  @db.VarChar(45)
+  contact         String? @db.VarChar(45)
+}
+
+model sessions {
+  session_id String  @id @db.VarChar(128)
+  expires    Int     @db.UnsignedInt
+  data       String? @db.MediumText
+}
+
+model mobiletransferHistory {
+  id                                               Int                         @id @default(autoincrement())
+  createdAt                                        DateTime?                   @default(now()) @db.DateTime(0)
+  fromshop                                         Int
+  toshop                                           Int
+  confirmedBy                                      Int?
+  status                                           String?                     @default("pending") @db.VarChar(45)
+  type                                             mobiletransferHistory_type?
+  productID                                        Int?
+  transferdBy                                      Int?
+  quantity                                         Int?                        @default(0) @db.UnsignedInt
+  updatedAt                                        DateTime?                   @default(now()) @db.DateTime(0)
+  actors_mobiletransferHistory_confirmedByToactors actors?                     @relation("mobiletransferHistory_confirmedByToactors", fields: [confirmedBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobiletransferhistory_confirmedBy")
+  shops_mobiletransferHistory_fromshopToshops      shops                       @relation("mobiletransferHistory_fromshopToshops", fields: [fromshop], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobiletransferhistory_fromshop")
+  mobiles                                          mobiles?                    @relation(fields: [productID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobiletransferhistory_mobiles")
+  shops_mobiletransferHistory_toshopToshops        shops                       @relation("mobiletransferHistory_toshopToshops", fields: [toshop], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobiletransferhistory_toshop")
+  actors_mobiletransferHistory_transferdByToactors actors?                     @relation("mobiletransferHistory_transferdByToactors", fields: [transferdBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobiletransferhistory_transferdBy")
+
+  @@index([confirmedBy], map: "fk_mobiletransferhistory_confirmedBy")
+  @@index([fromshop], map: "fk_mobiletransferhistory_fromshop")
+  @@index([productID], map: "fk_mobiletransferhistory_mobiles")
+  @@index([toshop], map: "fk_mobiletransferhistory_toshop")
+  @@index([transferdBy], map: "fk_mobiletransferhistory_transferdBy")
+}
+
+enum categories_itemType {
+  mobiles
+  accessories
+}
+
+enum assignment_status {
+  assigned
+  removed
+}
+
+enum accessorytransferhistory_type {
+  distribution
+  transfer
+}
+
+enum accessorysales_paymentmethod {
+  mpesa
+  cash
+  creditcard
+}
+
+enum mobilesales_paymentmethod {
+  mpesa
+  cash
+  creditcard
+}
+
+enum accessorysales_commisssionStatus {
+  pending
+  paid
+}
+
+enum mobilesales_commisssionStatus {
+  pending
+  paid
+}
+
+enum mobiletransferHistory_type {
+  distribution
+  transfer
+  return
+}

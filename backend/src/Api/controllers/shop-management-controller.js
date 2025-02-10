@@ -113,7 +113,6 @@ const createShop = async (req, res, next) => {
     return res.status(201).json({
       status: 201,
       data: newShopCreated,
-      isLoggedIn: true,
     });
   } catch (err) {
     if (err instanceof APIError) {
@@ -126,7 +125,7 @@ const createShop = async (req, res, next) => {
 
 const updateShop = async (req, res, next) => {
   try {
-    const shopID = req.params.id;
+    const shopID = parseInt(req.params.id, 10);
     const shopDetails = req.body;
     const updatedShop = await ShopManagementSystem.updateShop(
       shopID,
@@ -136,6 +135,7 @@ const updateShop = async (req, res, next) => {
       .status(200)
       .json({ message: "success", error: false, data: updatedShop });
   } catch (err) {
+    console.log("eroror", err)
     if (err instanceof APIError) {
       return res
         .status(err.statusCode)
@@ -175,10 +175,9 @@ const removeAssignment = async (req, res) => {
     if (user.role !== "manager") {
       res.status(403).json({ message: "unauthorised", error: true });
     }
-    const { name, shopname } = req.body;
+    const { assignmentId, shopname } = req.body;
     const remove = await ShopManagementSystem.removeassignment({
-      name,
-      shopname,
+      assignmentId,
     });
     return res.status(200).json({ message: remove.message, error: false });
   } catch (err) {

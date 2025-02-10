@@ -40,6 +40,7 @@ class ShopmanagementService {
       const { name } = shopname;
 
       const shopFound = await this.repository.findShop({ name });
+
       if (!shopFound) {
         throw new APIError(
           "Shop not found",
@@ -47,43 +48,118 @@ class ShopmanagementService {
           "No shop found with the given name"
         );
       }
-      const unconfirmedAccessories = shopFound.newAccessory.filter(
-        (item) => item.status !== "confirmed" || item.productID !== null
-      );
+      //console.log("shopFOund", shopFound)
+      const assignedSellers = shopFound.assignment
+        .filter((assignment) => assignment.status === "assigned")
+        .map((seller) => ({
+          id: seller.id,
+          sellerId: seller.actors.id,
+          assignmentId: seller.id,
+          name: seller.actors.name,
+          phone: seller.actors.phone,
+          fromDate: seller.fromDate,
+          toDate: seller.toDate,
+          status: seller.status
+        }));
+      console.log(shopFound.assignment)
 
-      const unconfirmedPhones = shopFound.newPhoneItem.filter(
-        (item) => item.status !== "confirmed" || item.productID === null
-      );
-      const lowStockItems = shopFound.stockItems.filter(
-        (item) => item.quantity < 5 && item.stock !== null
-      );
-      const validStockItems = shopFound.stockItems.filter(
-        (item) => item.stock !== null
-      );
-      const validPhoneItems = shopFound.phoneItems.filter(
-        (item) => item.stock !== null
-      )
+      const transformAccessory = (item) => ({
+        quantity: item.quantity,
+        status: item.status,
+        productStatus: item.productStatus,
+        transferId: item.transferId,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        stock: {
+          id: item.accessoryID,
+          stockStatus: item.accessories.stockStatus,
+          commission: item.accessories.commission,
+          discount: item.accessories.discount,
+          productcost: item.accessories.productCost,
+          batchNumber: item.accessories.batchNumber,
+        },
+        categoryId: {
+          id: item.accessories.categories.id,
+          itemName: item.accessories.categories.itemName,
+          itemModel: item.accessories.categories.itemModel,
+          brand: item.accessories.categories.brand,
+          minPrice: item.accessories.categories.minPrice,
+          maxPrice: item.accessories.categories.maxPrice,
+          itemType: item.accessories.categories.itemType,
+        },
+        quantity: item.quantity,
+
+      });
+
+      const transformPhone = (item) => ({
+        quantity: item.quantity,
+        status: item.status,
+        productStatus: item.productStatus,
+        transferId: item.transferId,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        stock: {
+          id: item.mobileID,
+          stockStatus: item.mobiles.stockStatus,
+          commission: item.mobiles.commission,
+          discount: item.mobiles.discount,
+          IMEI: item.mobiles.IMEI,
+          productcost: item.mobiles.productCost,
+        },
+        categoryId: {
+          id: item.mobiles.categories.id,
+          itemName: item.mobiles.categories.itemName,
+          itemModel: item.mobiles.categories.itemModel,
+          brand: item.mobiles.categories.brand,
+          minPrice: item.mobiles.categories.minPrice,
+          maxPrice: item.mobiles.categories.maxPrice,
+          itemType: item.mobiles.categories.itemType,
+
+        },
+        quantity: item.quantity,
+      });
+
+      const newAccessory = shopFound.accessoryItems
+        .filter((item) => item.status === "pending" && item.accessoryID !== null)
+        .map(transformAccessory);
+
+      const newPhoneItem = shopFound.mobileItems
+        .filter((item) => item.status === "pending" && item.mobileID !== null)
+        .map(transformPhone);
+
+      const stockItems = shopFound.accessoryItems
+        .filter((item) => item.status === "confirmed" && item.quantity > 0)
+        .map(transformAccessory);
+
+      const phoneItems = shopFound.mobileItems
+        .filter((item) => item.status === "confirmed" && item.quantity !== 0)
+        .map(transformPhone);
+
+      const lowStockItems = shopFound.accessoryItems
+        .filter((item) => item.quantity < 5 && item.accessoryID !== null)
+        .map(transformAccessory);
 
       const filteredShop = {
-        ...shopFound._doc,
-        newAccessory: unconfirmedAccessories,
-        newPhoneItem: unconfirmedPhones,
-        stockItems: validStockItems,
-        phoneItems: validPhoneItems,
+        _id: shopFound.id.toString(),
+        name: shopFound.shopName,
+        address: shopFound.address,
+        sellers: assignedSellers,
+        newAccessory,
+        newPhoneItem,
+        stockItems,
+        phoneItems,
         lowStockItems,
       };
-      return {
-        filteredShop,
-      };
-    } catch (err) {
-      if (err instanceof APIError) {
-        throw err;
-      }
 
+      return {
+
+        filteredShop: filteredShop,
+      };
+    } catch (error) {
       throw new APIError(
-        "Shop Error",
+        "Internal Server Error",
         STATUS_CODE.INTERNAL_ERROR,
-        "Internal server error"
+        error.message
       );
     }
   }
@@ -214,43 +290,6 @@ class ShopmanagementService {
       );
     }
   }
-  // async confirmphoneArrival(userId, shopname, productId, transferId) {
-  //     try {
-  //         let shopId;
-  //         const findShop = await this.repository.findShop({ name: shopname });
-  //         if (!findShop) {
-  //             throw new APIError("not found", STATUS_CODE.NOT_FOUND, "shop not found")
-  //         }
-  //         shopId = findShop.id;
-
-  //         //confirm if the seller is assigned so as to confirm arrival
-  //         const sellerAssinged = findShop.sellers.find(seller => seller._id.toString() === userId.toString())
-  //         if (!sellerAssinged) {
-  //             throw new APIError("Unauthorized", STATUS_CODE.UNAUTHORIZED, "You are not authorized to confirm arrival")
-  //         }
-  //         //check if the product is available awaiting for confirmation
-  //         const productAvailableAwaiting = findShop.newPhoneItem.find((product) => product.productID._id.toString() === productId);
-  //         if (!productAvailableAwaiting) {
-  //             throw new APIError("not found", STATUS_CODE.NOT_FOUND, "product not found")
-  //         }
-
-  //         let quantity = productAvailableAwaiting.quantity
-
-  //         if (productAvailableAwaiting.status === "confirmed") {
-  //             throw new APIError("bad request", STATUS_CODE.BAD_REQUEST, "product already confirmed")
-  //         }
-
-  //         const inventoryConfirm = await this.mobile.confirmDistribution({ shopId, userId, productId, quantity, transferId })
-  //         return inventoryConfirm
-  //     }
-  //     catch (err) {
-  //         if (err instanceof APIError) {
-  //             throw err;
-  //         }
-  //         throw new APIError("Service Error", STATUS_CODE.INTERNAL_ERROR, "Internal server error");
-  //     }
-  // }
-
   async assignSeller({ name, fromDate, toDate, shopname }) {
     try {
       const shop = await this.repository.findShop({ name: shopname });
@@ -262,11 +301,13 @@ class ShopmanagementService {
         );
       }
       const user = await this.user.findUserByname({ name: name });
-      const userID = user.id;
-      console.log("userid", userID);
-      const shopID = shop.id;
-      const sellerAssigned = shop.sellers.find(
-        (seller) => seller._id.toString() === userID.toString()
+      const sellerId = user.id;
+      const type = "assigned"
+
+      const shopId = shop.id;
+      console.log(shop.assignment)
+      const sellerAssigned = shop.assignment.some(
+        (assignment) => assignment.actors.id === sellerId && assignment.status === "assigned"
       );
       if (sellerAssigned) {
         throw new APIError(
@@ -275,19 +316,15 @@ class ShopmanagementService {
           "USER ALREADY ASSIGNED"
         );
       }
-      shop.sellers.push(userID);
-      shop.save();
-      const updateUserAssignmentHistory = await this.user.updateUserAssignment({
-        sellerId: userID,
-        shopId: shopID,
-        fromDate: fromDate,
-        toDate: toDate,
-        type: "assigned",
-      });
+
+      //commit the assignment
+      const assignment = await this.user.updateUserAssignment({ sellerId, shopId, fromDate, toDate, type })
       return {
         message: "seller assigned successfully",
+
       };
     } catch (err) {
+      console.log("service error", err)
       if (err instanceof APIError) {
         throw err;
       }
@@ -301,38 +338,10 @@ class ShopmanagementService {
 
   //remove seller from the shop
 
-  async removeassignment({ name, shopname }) {
+  async removeassignment({ assignmentId }) {
     try {
-      const shop = await this.repository.findShop({ name: shopname });
-      if (!shop) {
-        throw new APIError(
-          "not found",
-          STATUS_CODE.NOT_FOUND,
-          "shop not found"
-        );
-      }
-      const shopId = shop.id;
-      const user = await this.user.findUserByname({ name: name });
-      const userId = user.id;
-      // Remove the seller from the shop's seller list
-      shop.sellers = shop.sellers.filter(
-        (seller) => seller._id.toString() !== userId
-      );
-      await shop.save();
 
-      // Update the user's assignment history with the toDate
-      const toDate = new Date(); // Assuming you want to set the current date as the toDate
-      const updatedUser = await this.user.updateUserAssignment({
-        sellerId: userId,
-        shopId: shopId,
-        fromDate: user.assignedShop ? user.assignedShop.fromDate : null, // Assuming fromDate is stored when the user is assigned
-        toDate: toDate,
-        type: "removed",
-      });
-
-      // Remove the shop from the user's assigned shops
-      updatedUser.assignedShop = null;
-      await updatedUser.save();
+      const assignment = await this.user.removeUserAssignment(assignmentId)
 
       return { message: "success" };
     } catch (err) {
@@ -349,8 +358,8 @@ class ShopmanagementService {
   async findproductbysearch(productName, shopName) {
     try {
       const products = await this.repository.searchProductName(
+        shopName,
         productName,
-        shopName
       );
       if (!products.phoneItems.length && !products.stockItems.length && !products.matchingImei.length) {
         throw new APIError(

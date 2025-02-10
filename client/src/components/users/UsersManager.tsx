@@ -15,6 +15,8 @@ const UsersManager = () => {
   const [userType, setUserType] = useState<string>('seller');
   const [phone, setPhone] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [nextofKinName, setNextofKinName] = useState<string>('');
+  const [nextofKinPhone, setNextofKinPhone] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [packageData, setPackageData] = useState<Package[]>([]);
   const [message, setMessage] = useState<{ text: string; type: string } | null>(
@@ -68,6 +70,8 @@ const UsersManager = () => {
           password: password,
           name: userName,
           phonenumber: phone,
+          nextofkinname: nextofKinName,
+          nextofkinphonenumber: nextofKinPhone,
         },
         { withCredentials: true },
       );
@@ -142,8 +146,9 @@ const UsersManager = () => {
       {toggleAddUser && (
         <div className="rounded mb-10 border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
           <form onSubmit={handleAddUser}>
-            <div className="px-6.5 py-4 grid sm:grid-cols-4 gap-x-4 items-end">
-              <div className="">
+          <h1 className='p-4'>Account Information</h1>
+          <div className="px-6.5 grid sm:grid-cols-4 gap-x-4 items-end">
+              <div className="mb-3">
                 <label className="mb-2.5 block text-black dark:text-white">
                   User Type
                 </label>
@@ -209,9 +214,9 @@ const UsersManager = () => {
                   </span>
                 </div>
               </div>
-              <div className="">
+              <div className="mb-3">
                 <label className="mb-2.5 block text-black dark:text-white">
-                  Name
+                  Full Name
                 </label>
                 <input
                   required
@@ -222,7 +227,7 @@ const UsersManager = () => {
                 />
               </div>
 
-              <div className="">
+              <div className="mb-3">
                 <label className="mb-2.5 block text-black dark:text-white">
                   Email
                 </label>
@@ -235,7 +240,7 @@ const UsersManager = () => {
                 />
               </div>
 
-              <div className="">
+              <div className="mb-3">
                 <label className="mb-2.5 block text-black dark:text-white">
                   Phone
                 </label>
@@ -247,10 +252,8 @@ const UsersManager = () => {
                   className="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                 />
               </div>
-            </div>
-            <div className="px-6.5 py-4 grid sm:grid-cols-4 gap-x-4 items-end">
-              <div className="">
-                <label className="mb-2.5 block text-black dark:text-white">
+              <div className="mb-3">
+                <label className="mb-2 block text-black dark:text-white">
                   Password
                 </label>
                 <input
@@ -262,20 +265,48 @@ const UsersManager = () => {
                   className="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                 />
               </div>
-              <div className="mb-2.5"></div>
-              <div className="mb-2.5"></div>
-              <div className="grid grid-cols-2 gap-1">
+            </div>
+            <h1 className='px-4'>Next of Kin Information</h1>
+            <div className="px-6.5 py-4 grid sm:grid-cols-4 gap-x-4 items-end">
+              <div className="mb-3">
+                <label className="mb-2.5 block text-black dark:text-white">
+                  Full Name
+                </label>
+                <input
+                  required
+                  type="text"
+                  placeholder="Enter full name"
+                  onChange={(e) => setNextofKinName(e.target.value)}
+                  className="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="mb-2.5 block text-black dark:text-white">
+                  Phone Number
+                </label>
+                <input
+                  required
+                  type="phone"
+                  placeholder="Enter phone number"
+                  onChange={(e) => setNextofKinPhone(e.target.value)}
+                  className="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                />
+              </div>
+            </div>
+            <div className='flex justify-end w-full'>
+              <div className="flex gap-4 m-2 w-full md:w-1/3 xl:w-1/4">
                 <button
                   onClick={() => setToggleAddUser(false)}
-                  className={`mb-2.5 flex w-full justify-center rounded bg-warning p-3 font-medium text-gray hover:bg-opacity-90 ${
+                  className={`mb-2.5 flex w-full justify-center rounded bg-warning p-3 font-medium text-boxdark hover:bg-opacity-90 ${
                     submitting && 'cursor-not-allowed opacity-50'
                   }`}
                 >
                   Cancel
                 </button>
                 <button
-                type='submit'
-                  className={`mb-2.5 flex w-full justify-center rounded bg-primary p-3 font-medium text-gray hover:bg-opacity-90 ${
+                  type="submit"
+                  className={`mb-2.5 flex w-full justify-center rounded bg-primary p-3 font-medium text-boxdark hover:bg-opacity-90 ${
                     submitting && 'cursor-not-allowed opacity-50'
                   }`}
                 >

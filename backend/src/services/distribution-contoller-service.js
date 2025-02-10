@@ -14,9 +14,10 @@ class distributionService {
 
     async createnewMobileDistribution(distributionDetails) {
         try {
-            const { mainShop, distributedShop, stockId, userId, userName } =
+            const { mainShop, distributedShop, stockId, userId } =
                 distributionDetails;
-
+            const productId = parseInt(stockId, 10);
+            const userID = parseInt(userId, 10);
             let parsedQuantity = parseInt(1, 10);
             if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
                 throw new APIError(
@@ -30,7 +31,7 @@ class distributionService {
             let [findMainShop, findMiniShop, stockItem] = await Promise.all([
                 this.shop.findShop({ name: mainShop }),
                 this.shop.findShop({ name: distributedShop }),
-                this.mobile.findItem(stockId)
+                this.mobile.findItem(productId)
             ]);
             if (!findMainShop || !findMiniShop) {
                 throw new APIError(
@@ -47,11 +48,11 @@ class distributionService {
                 );
             }
 
-            // const shopId = findMainShop._id;
-            // const shopToId = findMiniShop._id;
+            const shopId = findMainShop.id;
+            const shopToId = findMiniShop.id;
 
             //distributed shop will be replaced by minishop
-            const categoryId = stockItem.CategoryId;
+            const categoryId = stockItem.CategoryId
             if (stockItem.stockStatus === "distributed") {
                 throw new APIError(
                     "distribution error",
@@ -79,25 +80,27 @@ class distributionService {
             }
             const newTransfer = {
                 quantity: parsedQuantity,
-                fromShop: mainShop,
-                toShop: distributedShop,
+                fromShop: shopId,
+                toShop: shopToId,
                 status: "pending",
-                transferdBy: userName,
+                transferdBy: userId,
                 type: "distribution",
             };
 
-            stockItem = await this.mobile.updateTransferHistory(stockId, newTransfer);
-            stockItem.availableStock = stockItem.availableStock -= parsedQuantity;
-            stockItem.stockStatus = "distributed";
-            const addedTransfer =
-                stockItem.transferHistory[stockItem.transferHistory.length - 1];
-            const distributionId = addedTransfer.id;
+            const stockTransferHistory = await this.mobile.createTransferHistory(productId, newTransfer);
+            console.log("stock", stockTransferHistory)
+            const distributionData = {
+                quantity: parsedQuantity,
+                status: "distributed"
+            }
+            await this.mobile.updateMobileDistributionStatusQuantity(productId, distributionData);
+
+            const distributionId = stockTransferHistory.id;
             //find whether the product exist in the shop
-            const existingStock = findMiniShop.phoneItems.find((item) => {
-                if (item.stock && item.stock._id) {
-                    return item.stock._id.toString() === stockId.toString();
-                }
-                return false;
+            const existingStock = findMiniShop.mobileItems.find((item) => {
+
+                return item.mobileID === productId;
+
             });
             if (existingStock) {
                 throw new APIError(
@@ -106,20 +109,18 @@ class distributionService {
                     "product already exist"
                 );
             } else {
-                const addedItem = {
-                    productID: stockId,
+                const newItem = {
+                    productID: productId,
                     categoryId: categoryId,
                     quantity: 1,
+                    shopID: shopToId,
                     status: "pending",
                     transferId: distributionId,
                     productStatus: "new stock",
                 };
                 const shopId = findMiniShop._id;
-                findMiniShop = await this.shop.newAddedphoneItem(shopId, addedItem);
+                findMiniShop = await this.shop.newAddedphoneItem(newItem);
             }
-
-            await this.mobile.saveMobile(stockItem);
-            await this.shop.saveShop(findMiniShop);
         } catch (err) {
             if (err instanceof APIError) {
                 throw err;
@@ -133,9 +134,10 @@ class distributionService {
     }
     async createnewAccessoryDistribution(distributionDetails) {
         try {
-            const { mainShop, distributedShop, stockId, quantity, userName } =
+            const { mainShop, distributedShop, stockId, quantity, userId } =
                 distributionDetails;
             let parsedQuantity = parseInt(quantity, 10);
+            let productId = parseInt(stockId, 10)
             if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
                 throw new APIError(
                     "distribution error",
@@ -154,12 +156,10 @@ class distributionService {
                     "shop not found"
                 );
             }
-            const shopId = findMainShop._id;
-            const shopToId = findMiniShop._id;
+            const shopId = parseInt(findMainShop.id, 10);
+            const shopToId = parseInt(findMiniShop.id, 10);
 
-            //distributed shop will be replaced by minishop
-
-            let stockItem = await this.repository.findProductById(stockId);
+            let stockItem = await this.repository.findProductById(productId);
             if (!stockItem) {
                 throw new APIError(
                     "Stock not found",
@@ -181,26 +181,25 @@ class distributionService {
                 quantity: parsedQuantity,
                 fromShop: shopId,
                 toShop: shopToId,
+                productId: productId,
                 status: "pending",
-                tranferdBy: userName,
+                userId: userId,
                 type: "distribution",
             };
 
-            stockItem = await this.repository.updateTransferHistory(stockId, newTransfer);
-            const addedTransfer =
-                stockItem.transferHistory[stockItem.transferHistory.length - 1];
-            const distributionId = addedTransfer.id;
+            const newTransferHistory = await this.repository.createTransferHistory(stockId, newTransfer);
+
+            const distributionId = newTransferHistory.id;
             //find whether the product exist in the shop
-            const existingStockItem = findMiniShop.stockItems.find((item) => {
+            const existingStockItem = findMiniShop.accessoryItems.find((item) => {
                 return (
-                    item.stock &&
-                    item.stock._id &&
-                    item.stock._id.toString() === stockId.toString()
+
+                    item.accessoryID === productId
                 );
             });
             if (existingStockItem) {
                 const addedItem = {
-                    productID: stockId,
+                    productID: productId,
                     quantity: parsedQuantity,
                     fromShop: shopId,
                     categoryId: categoryId,
@@ -211,7 +210,7 @@ class distributionService {
                 findMiniShop = await this.shop.addNewAccessory(shopToId, addedItem)
             } else {
                 const addedItem = {
-                    productID: stockId,
+                    productID: productId,
                     quantity: parsedQuantity,
                     fromShop: shopId,
                     categoryId: categoryId,
@@ -221,9 +220,8 @@ class distributionService {
                 };
                 findMiniShop = await this.shop.addNewAccessory(shopToId, addedItem);
             }
-            stockItem.availableStock -= parsedQuantity;
-            await this.repository.saveAccessory(stockItem);
-            await this.shop.saveShop(findMiniShop);
+            const updateQuantity = await this.repository.updateStockQuantity(productId, parsedQuantity)
+
         } catch (err) {
             if (err instanceof APIError) {
                 throw err;

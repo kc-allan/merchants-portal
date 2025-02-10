@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, CardContent } from '@mui/material';
+import { Avatar, AvatarGroup, Card, CardContent } from '@mui/material';
 import {
   User,
   ChartBar,
@@ -19,7 +19,7 @@ import jwt_decode from 'jwt-decode';
 
 // Type definitions
 interface Sale {
-  _id: string;
+  id: string;
   category: 'accessory' | 'phone';
   soldprice: number;
   quantity: number;
@@ -41,12 +41,12 @@ interface Assignment {
 }
 
 interface UserProfile {
-  _id: string;
+  id: string;
   profileimage: string;
   name: string;
   email: string;
   phone: string;
-  assignmentHistory: Assignment[];
+  assignment: Assignment[];
   AccessorySalesHistory: Sale[];
   MobilePhoneSalesHistory: Sale[];
 }
@@ -94,7 +94,7 @@ const UserView: React.FC = () => {
         // const decodedToken = jwt_decode<DecodedToken>(token);
         const response = await fetch(
           `${import.meta.env.VITE_SERVER_HEAD}/api/sales/user/${
-            userProfile._id
+            userProfile.id
           }`,
           { credentials: 'include' },
         );
@@ -103,8 +103,8 @@ const UserView: React.FC = () => {
           throw new Error('Failed to fetch user data');
         }
 
-        const data = await response.json();
-        const user = data.user;
+        const responseData = await response.json();
+        const data = responseData.data;
         
 
         // Calculate sales data
@@ -142,6 +142,9 @@ const UserView: React.FC = () => {
         }
 
         const data = await response.json();
+
+        console.log(data);
+        
         setUserProfile(data.user);
       } catch (error) {
         setError(error instanceof Error ? error.message : 'An error occurred');
@@ -217,7 +220,7 @@ const UserView: React.FC = () => {
     {
       title: 'Member Since',
       value: formatDate(
-        userProfile?.assignmentHistory?.[0]?.fromDate ||
+        userProfile?.assignment?.[0]?.fromDate ||
           new Date().toISOString(),
       ),
       icon: Calendar,
@@ -248,13 +251,14 @@ const UserView: React.FC = () => {
         {/* Profile Header */}
         <Card className="mb-6 dark:bg-boxdark dark:text-bodydark">
           <CardContent className="flex items-center gap-6 p-6">
-            <img
+            <Avatar src={userProfile.profileimage} className="h-20 w-20 rounded-full bg-gray-200 flex items-center justify-center" />
+            {/* <img
               src={
                 userProfile.profileimage ||
                 'https://www.strasys.uk/wp-content/uploads/2022/02/Depositphotos_484354208_S.jpg'
               }
               className="h-20 w-20 rounded-full bg-gray-200 flex items-center justify-center"
-            />
+            /> */}
             <div>
               <h2 className="text-2xl font-semibold mb-2">
                 {userProfile.name}
@@ -349,7 +353,7 @@ const UserView: React.FC = () => {
               Recent Shop Assignments
             </h1>
             <CardContent>
-              {!userProfile.assignmentHistory?.length ? (
+              {!userProfile.assignment?.length ? (
                 <SuchEmpty
                   message="No Assignments"
                   description={`${userProfile.name} has not been assigned to any shop`}
@@ -357,9 +361,9 @@ const UserView: React.FC = () => {
                 />
               ) : (
                 <div className="space-y-4">
-                  {userProfile.assignmentHistory
+                  {userProfile.assignment
                     .slice(0, 3)
-                    .map((assignment, idx) => (
+                    .map((assignment: any, idx: number) => (
                       <div
                         key={idx}
                         className={`flex items-center justify-between p-4 ${
@@ -370,16 +374,16 @@ const UserView: React.FC = () => {
                           <Building2 className="h-6 w-6 text-blue-500" />
                           <div>
                             <p className="font-semibold">
-                              {assignment.shopId.name}
+                              {assignment.shops.shopName}
                             </p>
                             <p
                               className={`text-sm ${
-                                assignment.type === 'assigned'
+                                assignment.status === 'assigned'
                                   ? 'text-emerald-500'
                                   : 'text-red-500'
                               }`}
                             >
-                              {assignment.type}
+                              {assignment.status}
                             </p>
                           </div>
                         </div>

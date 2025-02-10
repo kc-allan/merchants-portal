@@ -29,6 +29,7 @@ import { useNavigate } from 'react-router-dom';
 import { DecodedToken } from './types/decodedToken';
 import jwt_decode from 'jwt-decode';
 import Message from './components/alerts/Message';
+import SalesBackup from './pages/SalesBackup';
 
 function App() {
   const [loading, setLoading] = useState<boolean>(true);
@@ -103,21 +104,29 @@ function App() {
     };
     serverStatus();
     validateToken();
-    if (token && currentUser?.workingstatus === 'inactive') {
+    // if (user?.role !== currentUser?.role) {
+    //   localStorage.clear();
+    //   navigate('/auth/signin');
+    // } else {
+    if (token && currentUser?.workingstatus.toLowerCase() === 'inactive') {
       setMessage({
         code: 403,
         message:
           'Your account has not been approved. Contact the manager for more information',
       });
-    } else if (token && currentUser?.workingstatus === 'suspended') {
+    } else if (
+      token &&
+      currentUser?.workingstatus.toLowerCase() === 'suspended'
+    ) {
       setMessage({
         code: 403,
         message:
           'Your account has been suspended. Contact the manager for more information',
       });
     }
+    // }
     setLoading(false);
-  }, [token, navigate]);
+  }, [token, currentUser?.role, currentUser?.workingstatus, navigate]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -130,7 +139,7 @@ function App() {
   if (!serverReachable) {
     return <ErrorPage code={message?.code} message={message?.message} />;
   }
-  
+
   return (
     <AppProvider>
       {loading ? (
@@ -197,7 +206,7 @@ function App() {
                 element={
                   <>
                     <PageTitle title="Sales | Captech" />
-                    <Sales />
+                    <SalesBackup />
                   </>
                 }
               />

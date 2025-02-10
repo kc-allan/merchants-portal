@@ -21,7 +21,7 @@ const createnewstock = async (req, res, next) => {
     }
     const itemData = {
       ...req.body,
-      user: user.name
+      user: parseInt(user.id, 10)
     }
     const newStock = await inventoryManagementSystem.createnewproduct(itemData);
     return res.status(201).json({
@@ -44,10 +44,7 @@ const createnewstock = async (req, res, next) => {
 const getProductProfile = async (req, res, next) => {
   try {
     const user = req.user;
-    const productId = req.params.id;
-    const period = req.query.period;
-    let startdate;
-    let endDate;
+    const productId = parseInt(req.params.id, 10)
     if (user.role !== "manager" && user.role !== "superuser") {
       throw new APIError(
         "UNAUTHORIZED",
@@ -55,47 +52,8 @@ const getProductProfile = async (req, res, next) => {
         "denied to view product profile"
       );
     }
-    const getStartdate = (date) => {
-      let start = new Date(date);
-      start.setHours(0, 0, 0, 0);
-      return start;
-    };
-
-    const getendDate = (date) => {
-      let end = new Date(date);
-      end.setHours(23, 59, 59, 999);
-      return end;
-    };
-
-    if (req.query.date) {
-      startdate = date ? getStartdate(date) : getStartdate(new Date());
-      endDate = date ? getendDate(date) : getendDate(new Date());
-    } else {
-      const now = moment();
-      switch (period) {
-        case "week":
-          startdate = now.startOf("week").toDate();
-          endDate = now.endOf("week").toDate();
-          break;
-        case "month":
-          startdate = now.startOf("month").toDate();
-
-          endDate = now.endOf("month").toDate();
-          break;
-        case "year":
-          startdate = now.startOf("year").toDate();
-          endDate = now.endOf("year").toDate();
-          break;
-        default:
-          startdate = now.startOf("day").toDate();
-          endDate = now.endOf("day").toDate();
-      }
-    }
-
     const productprofile = await inventoryManagementSystem.getProductProfile(
-      productId,
-      startdate,
-      endDate
+      productId
     );
 
     return res.status(200).json({
@@ -117,7 +75,7 @@ const getProductProfile = async (req, res, next) => {
 };
 const findSpecificProductHistory = async (req, res, next) => {
   try {
-    const id = req.params.id;
+    const id = parseInt(req.params.id, 10);
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 5;
     const productHistory = await inventoryManagementSystem.getproductHistory({
@@ -141,7 +99,7 @@ const findSpecificProductHistory = async (req, res, next) => {
 
 const findSpecificProductTransferHistory = async (req, res, next) => {
   try {
-    const id = req.params.id;
+    const id = parseInt(req.params.id, 10);
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 5;
     const productTransferHistory =
@@ -167,26 +125,6 @@ const findSpecificProductTransferHistory = async (req, res, next) => {
 };
 //download the pdf file
 
-const downloadQRCODE = async (req, res, next) => {
-  try {
-    const { productId } = req.params;
-    const filePath = path.join(
-      __dirname,
-      "..",
-      "..",
-      "public",
-      "barcodes",
-      `${productId}-barcode.pdf`
-    );
-    res.download(filePath, `${productId}-barcode.pdf`, (err) => {
-      if (err) {
-        res.status(500).send("Error downloading file");
-      }
-    });
-  } catch (err) {
-    return res.status(500).json({ message: "internal server error" });
-  }
-};
 
 //first phase to deal with the accessory administartion
 const findAllAccessoryProduct = async (req, res, next) => {
@@ -201,7 +139,6 @@ const findAllAccessoryProduct = async (req, res, next) => {
       currentPage: page,
       limit: limit,
       user,
-      isLoggedIn: true,
       totalPages: Math.ceil(totalItems / limit),
     });
   } catch (err) {
@@ -217,7 +154,7 @@ const findAllAccessoryProduct = async (req, res, next) => {
 
 const updateStock = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const id = parseInt(req.params.id, 10);
     const updates = req.body;
 
     const updatedStock = await inventoryManagementSystem.updateProduct(
@@ -256,12 +193,11 @@ const confirmarrival = async (req, res, next) => {
     let userId;
     let userName
     const user = req.user;
-    userId = user.id;
+    userId = parseInt(user.id, 10);
     userName = user.name
     const confirmDetails = {
       ...req.body,
       userId,
-      userName
     }
     const updateproductTransfer = await inventoryManagementSystem.confirmDistribution(confirmDetails);
     return res
@@ -314,7 +250,6 @@ export {
   getProductProfile,
   findAllAccessoryProduct,
   updateStock,
-  downloadQRCODE,
   confirmarrival,
   findSpecificProductHistory,
   findSpecificProductTransferHistory,

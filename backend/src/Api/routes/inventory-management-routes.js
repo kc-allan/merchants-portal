@@ -6,7 +6,6 @@ import {
   findAllAccessoryProduct,
   getProductProfile,
   createnewTransfer,
-  downloadQRCODE,
   findSpecificProductHistory,
   findSpecificProductTransferHistory,
   updateStock,
@@ -18,7 +17,7 @@ route.get(
   "/accessory/item/transferhistory/:id",
   findSpecificProductTransferHistory
 );
-route.get("/download/:productId/barcode", downloadQRCODE);
+
 route.get("/accessory", verifyUser, findAllAccessoryProduct);
 route.post("/create-stock", verifyUser, createnewstock);
 route.post("/accessory/create-transfer", verifyUser, createnewTransfer);

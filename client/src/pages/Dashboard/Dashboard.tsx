@@ -54,11 +54,7 @@ const Dashboard: React.FC = () => {
       netprofit: number;
       performance: number;
     }>
-  >([
-    // { name: 'John Doe', sales: 145000, performance: 98 },
-    // { name: 'Jane Smith', sales: 139000, performance: 95 },
-    // { name: 'Mike Johnson', sales: 124000, performance: 92 },
-  ]);
+  >([]);
 
   const [topProducts, setTopProducts] = useState<
     Array<{
@@ -68,17 +64,14 @@ const Dashboard: React.FC = () => {
       netprofit: number;
       performance: number;
     }>
-  >([
-    // { name: 'Product A', sales: 892, growth: '+12%' },
-    // { name: 'Product B', sales: 645, growth: '+8%' },
-    // { name: 'Product C', sales: 432, growth: '+5%' },
-  ]);
+  >([]);
   const [analyticsData, setAnalyticsData] = useState<any>({});
 
   // Calculate sales meter percentage (example)
   const salesTarget = 1000000;
-  const currentSales = 6000;
-  const meterPercentage = (analyticsData.totalSales / salesTarget) * 100 || 0;
+  const calcMeterPercentage =
+    (analyticsData.totalSales / salesTarget) * 100 || 0;
+  const meterPercentage = calcMeterPercentage > 100 ? 100 : calcMeterPercentage;
 
   const fetchAnalyticsData = async () => {
     try {
@@ -88,22 +81,19 @@ const Dashboard: React.FC = () => {
         { withCredentials: true },
       );
       const analyticsReport = salesDataResponse.data.data;
+      console.log(analyticsReport);
       
 
       setAnalyticsData(analyticsReport);
       setSalesData([...analyticsReport.salesPerMonth]);
-      setTopSellers([...analyticsReport.analytics.sellerAnalytics]);
+      setTopSellers([...analyticsReport.analytics.analytics.sellerAnalytics]);
       setTopProducts(
-        [...analyticsReport.analytics.productAnalytics].slice(0, 3),
+        [...analyticsReport.analytics.analytics.productAnalytics].slice(0, 3),
       );
-    } catch (error) {
-      
-    }
+    } catch (error) {}
   };
 
   useEffect(() => {
-    
-
     fetchAnalyticsData();
   }, []);
 
@@ -115,22 +105,46 @@ const Dashboard: React.FC = () => {
   return (
     <div className="p-6 w-full">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="bg-white dark:bg-boxdark rounded-xl p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-slate-400">
-                Total Sales
-              </p>
-              <h3 className="text-2xl font-bold mt-1">
-                {analyticsData.totalSales
-                  ? `Ksh ${analyticsData.totalSales.toLocaleString()}`
-                  : '-'}
-              </h3>
-              <span className="text-green-500 text-sm">+14.5%</span>
-            </div>
-            <div className="bg-blue-100 p-3 rounded-lg">
+        <div className="bg-blue-100 p-3 rounded-lg float-right flex">
               <DollarSign className="w-6 h-6 text-blue-600" />
+            </div>
+          <div className="flex items-center justify-between">
+          
+            <div className='w-full flex flex-col gap-4'>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-slate-400">
+                  Total Sales
+                </p>
+                <h3 className="text-2xl font-bold mt-1">
+                  {analyticsData.totalSales
+                    ? `Ksh ${analyticsData.totalSales.toLocaleString()}`
+                    : '-'}
+                </h3>
+              </div>
+              <div className='flex justify-between w-full'>
+                <div>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Direct Sales
+                  </p>
+                  <h3 className="text-sm font-bold mt-1">
+                    {analyticsData.totalSales
+                      ? `Ksh ${analyticsData.totalSales.toLocaleString()}`
+                      : '-'}
+                  </h3>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Financed Sales
+                  </p>
+                  <h3 className="text-sm font-bold mt-1">
+                    {analyticsData.totalSales
+                      ? `Ksh ${analyticsData.totalfinanceSalesPending.toLocaleString()}`
+                      : '-'}
+                  </h3>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -146,8 +160,8 @@ const Dashboard: React.FC = () => {
                   <h3 className="text-2xl font-bold mt-1">
                     <div>
                       <span>
-                        {analyticsData?.analytics?.totalSellers
-                          ? analyticsData.analytics.totalSellers.toLocaleString()
+                        {analyticsData?.analytics?.analytics.totalSellers
+                          ? analyticsData.analytics.analytics.totalSellers.toLocaleString()
                           : 0}
                       </span>
                       {/* <span className="text-sm"> / 25</span> */}
@@ -158,16 +172,6 @@ const Dashboard: React.FC = () => {
                   <Users className="w-6 h-6 text-green-600" />
                 </div>
               </div>
-              {/* <div className="flex justify-between w-full gap-4 text-center">
-                <div className="text-yellow-500 text-sm flex flex-col">
-                  <span>Inactive</span>
-                  <span>21</span>
-                </div>
-                <div className="text-red-500 text-sm flex flex-col">
-                  <span>Suspended</span>
-                  <span>2</span>
-                </div>
-              </div> */}
             </div>
           </div>
         </div>
@@ -179,8 +183,8 @@ const Dashboard: React.FC = () => {
                 Sold Products
               </p>
               <h3 className="text-2xl font-bold mt-1">
-                {analyticsData?.analytics?.totalProducts
-                  ? analyticsData.analytics.totalProducts.toLocaleString()
+                {analyticsData?.analytics?.analytics.totalProducts
+                  ? analyticsData.analytics.analytics.totalProducts.toLocaleString()
                   : '-'}
               </h3>
               <span className="text-red-500 text-sm">-2.3%</span>
@@ -393,7 +397,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
     </div>
-  )
+  );
 };
 
 export default Dashboard;

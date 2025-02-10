@@ -36,18 +36,38 @@ const ErrorPage: React.FC<ErrorPageProps> = ({ code, message }) => {
           </p>
         )}
         <p className="mt-2 text-base text-gray-600 dark:text-gray-300">
-          If you think this is a mistake, please <a className='underline text-primary' href="#" target="_blank" rel="noopener noreferrer">contact us.</a>
+          If you think this is a mistake, please{' '}
+          <a
+            className="underline text-primary"
+            href="#"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            contact us.
+          </a>
         </p>
 
-        {code === 401 || code === 403 || code === 404 && (
         <button
-          onClick={() => navigate('/')}
-          className="mt-8 inline-flex items-center gap-2 px-6 py-3 text-base font-medium text-white bg-blue-600 dark:bg-blue-500 rounded-lg shadow-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          className="mt-8 inline-flex items-center gap-2 px-6 py-3 text-base font-medium text-white dark:bg-boxdark-2 rounded-lg shadow-lg shadow hover:scale-110 transition-all duration-200"
+          onClick={() => {
+            localStorage.clear();
+            navigate('/auth/signin');
+          }}
         >
-          <Home className="w-5 h-5" />
-          Return Home
+          Log Out
         </button>
-        )}
+
+        {code === 401 ||
+          code === 403 ||
+          (code === 404 && (
+            <button
+              onClick={() => navigate('/')}
+              className="mt-8 inline-flex items-center gap-2 px-6 py-3 text-base font-medium text-white bg-blue-600 dark:bg-blue-500 rounded-lg shadow-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <Home className="w-5 h-5" />
+              Return Home
+            </button>
+          ))}
       </div>
     </div>
   );

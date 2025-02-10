@@ -10,6 +10,40 @@ class userManagmentService {
   constructor() {
     this.repository = new usermanagemenRepository();
   }
+  async createSeller(sellerdetails) {
+    try {
+      const {
+        name,
+        email,
+        password,
+        phonenumber,
+        nextofkinname,
+        nextofkinphonenumber,
+      } = sellerdetails;
+      const salt = await GenerateSalt();
+      const hashedpassword = await Generatepassword(salt, password);
+
+      const newUser = await this.repository.createSeller({
+        name,
+        email,
+        hashedpassword,
+        phonenumber,
+        nextofkinname,
+        nextofkinphonenumber,
+      });
+      return newUser;
+    } catch (err) {
+      console.log("sevice", err);
+      if (err instanceof APIError) {
+        throw err;
+      }
+      throw new APIError(
+        "Service Error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "An error occurred during the signup process"
+      );
+    }
+  }
   async findAllUser(page, limit) {
     try {
       const { users, totalPages } = await this.repository.fetchAllUsers(
@@ -42,13 +76,25 @@ class userManagmentService {
 
   async findSpecificUser(useremail) {
     try {
-      const userAvailable = await this.repository.findUser({ email: useremail });
+      const userFound = await this.repository.findUser(useremail);
       // console.log("**************************", userAvailable)
+      const userId = userFound.id;
+      const userAssignedShop = await this.repository.findAssignedShop(userId);
+
+      const shopAssigned = userAssignedShop.filter(
+        (assignment) => assignment.status === "assigned"
+      );
+      const userAvailable = {
+        ...userFound,
+        assignedShop: shopAssigned[0]?.shops,
+      };
+
       return userAvailable;
     } catch (err) {
       if (err instanceof APIError) {
         throw err;
       }
+      console.log(err)
       throw new APIError(
         "Service Error",
         STATUS_CODE.INTERNAL_ERROR,
@@ -60,14 +106,31 @@ class userManagmentService {
   async UserLogin(userlogindetails) {
     try {
       const { email, password } = userlogindetails;
-      const userAvailable = await this.repository.findUser({ email: email });
-      if (!userAvailable) {
+      const userFound = await this.repository.findUser(email);
+
+      if (!userFound) {
         throw new APIError("Not found", 404, "The user is not found");
       }
+      const userId = userFound.id;
+      const userAssignedShop = await this.repository.findAssignedShop(userId);
+
+      const shopAssigned = userAssignedShop.filter(
+        (assignment) => assignment.status === "assigned"
+      );
+
+      const userAvailable = {
+        ...userFound,
+        assignedShop: shopAssigned[0]?.shops.shopName,
+      };
+      console.log("user", userAvailable);
+      const { accessorySales, mobileSales } = await Promise.all([
+        this.repository.findUserAccesorySales(userId),
+        this.repository.findUserMobilesSales(userId),
+      ]);
 
       const passwordMatch = await validatePassword(
         password,
-        userAvailable.password
+        userFound.password
       );
 
       console.log("password match", passwordMatch);
@@ -81,12 +144,14 @@ class userManagmentService {
       }
 
       const payload = {
-        id: userAvailable._id,
-        role: userAvailable.role,
-        email: userAvailable.email,
-        name: userAvailable.name,
-        phonenumber: userAvailable.phonenumber,
-        workingstatus: userAvailable.workingstatus,
+        id: userFound.id,
+        role: userFound.role,
+        email: userFound.email,
+        name: userFound.name,
+        accesssorySales: accessorySales,
+        mobilesSales: mobileSales,
+        phonenumber: userFound.phonenumber,
+        workingstatus: userFound.workingstatus,
       };
       const token = await GenerateSignature(payload);
       return { token, userAvailable };
@@ -113,8 +178,10 @@ class userManagmentService {
         nextofkinname,
         nextofkinphonenumber,
       } = superuserdetails;
+      console.log(superuserdetails);
       const salt = await GenerateSalt();
       const hashedpassword = await Generatepassword(salt, password);
+      console.log("hashed", hashedpassword);
       const newUser = await this.repository.createMainAdmin({
         name,
         email,
@@ -126,39 +193,6 @@ class userManagmentService {
       return newUser;
     } catch (err) {
       throw err;
-    }
-  }
-  async createSeller(sellerdetails) {
-    try {
-      const {
-        name,
-        email,
-        password,
-        phonenumber,
-        nextofkinname,
-        nextofkinphonenumber,
-      } = sellerdetails;
-      const salt = await GenerateSalt();
-      const hashedpassword = await Generatepassword(salt, password);
-      const newUser = await this.repository.createSeller({
-        name,
-        email,
-        hashedpassword,
-        phonenumber,
-        nextofkinname,
-        nextofkinphonenumber,
-      });
-      return newUser;
-    } catch (err) {
-      console.log("sevice", err)
-      if (err instanceof APIError) {
-        throw err;
-      }
-      throw new APIError(
-        "Service Error",
-        STATUS_CODE.INTERNAL_ERROR,
-        "An error occurred during the signup process"
-      );
     }
   }
 
@@ -265,9 +299,9 @@ class userManagmentService {
 
   async updateUserStatus(userdetails) {
     try {
-      const { status, id } = userdetails;
+      const { status, userId } = userdetails;
 
-      const updatedUser = await this.repository.updateUser({ status, id });
+      const updatedUser = await this.repository.updateUser({ status, userId });
 
       return updatedUser;
     } catch (err) {
@@ -303,20 +337,32 @@ class userManagmentService {
 
   async updateUserProfile(userdetails) {
     try {
-      const { password, phone, name, email, userRequestedId, nextofkinname, nextofkinphonenumber } = userdetails;
+      const {
+        password,
+        phone,
+        name,
+        email,
+        nextofkinname,
+        nextofkinphonenumber,
+      } = userdetails;
 
-      let updatedFields = { name, phone, email, nextofkinname, nextofkinphonenumber };
+      let updatedFields = {
+        name,
+        phone,
+        email,
+        nextofkinname,
+        nextofkinphonenumber,
+      };
 
       if (password) {
         const salt = await GenerateSalt();
         const hashedPassword = await Generatepassword(salt, password);
         updatedFields.password = hashedPassword;
       }
-
-      const updatedUser = await this.repository.updateUserProfile({
-        ...updatedFields,
-        id: userRequestedId,
-      });
+      console.log("updaatedfield", updatedFields);
+      const updatedUser = await this.repository.updateUserProfile(
+        updatedFields
+      );
 
       return updatedUser;
     } catch (err) {
@@ -341,19 +387,18 @@ class userManagmentService {
           "not found",
           STATUS_CODE.NOT_FOUND,
           "user not found"
-        )
+        );
       }
       return user;
-    }
-    catch (err) {
+    } catch (err) {
       if (err instanceof APIError) {
-        throw err
+        throw err;
       }
       throw new APIError(
         "service error",
         STATUS_CODE.INTERNAL_ERROR,
         "internal server error"
-      )
+      );
     }
   }
 }

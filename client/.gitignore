@@ -24,4 +24,7 @@ dist-ssr
 *.sw?
 
 scripts
+TODO.md
 .env
+
+package-lock.json

@@ -25,7 +25,7 @@ import axios from 'axios';
 import { CircularProgress } from '@mui/material';
 
 interface Report {
-  _id: {
+  id: {
     productId: string;
     sellerId: string;
     shopname: string;

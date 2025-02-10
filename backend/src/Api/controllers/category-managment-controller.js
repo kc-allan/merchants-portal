@@ -75,7 +75,8 @@ const updateCategory = async (req, res) => {
                 "not allowed to update a category"
             )
         }
-        const updatedProduct = await category.updateCategory(req.params.id, req.body)
+        const categoryId = parseInt(req.params.id, 10)
+        const updatedProduct = await category.updateCategory(categoryId, req.body)
         res.status(200).json({
             message: "product succuessfully updated",
             data: updatedProduct
@@ -123,9 +124,30 @@ const getCategoryById = async (req, res) => {
     }
 }
 
+const getCategoryByShop = async (req, res) => {
+    try {
+        const shopName = req.params.shopName;
+        const categoryId = req.params.categoryId;
+
+        const getCategory = await category.getCategoryByShop(shopName, categoryId);
+        res.status(200).json({
+            message: "category fetch sucessfully",
+            data: getCategory
+        })
+    }
+    catch (err) {
+        if (err instanceof APIError) {
+            return res
+                .status(err.statusCode)
+                .json({ message: err.message, error: true });
+        }
+    }
+}
+
 export {
     createCategory,
     updateCategory,
     getCategoryById,
-    getAllCategories
+    getAllCategories,
+    getCategoryByShop
 }

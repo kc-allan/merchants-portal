@@ -1,5 +1,6 @@
 import express from "express";
 import session from "express-session";
+import MySQLStore from 'express-mysql-session';
 import morgan from "morgan";
 import cookies from "cookie-parser";
 import { ErrorHandler } from "./Utils/error-handler.js";
@@ -7,12 +8,12 @@ import inventoryRoutes from "./Api/routes/inventory-management-routes.js";
 import searchroutes from "./Api/routes/search-management-route.js";
 import shoproutes from "./Api/routes/shop-inventory-routes.js";
 import userRoutes from "./Api/routes/usermanagement-routes.js";
+import transferRoutes from "./Api/routes/transfer-management-routes.js"
 import distributionRoutes from "./Api/routes/distribution-management-route.js";
 import mobileRoutes from "./Api/routes/mobile-management-routes.js";
 import salesroute from "./Api/routes/salesroutes.js";
-import categoryRoutes from "./Api/routes/category-management-route.js";
+import categoryRoutes from "./Api/routes/category-management-routes.js";
 import config from "./Config/index.js";
-import MongoDBStore from "connect-mongodb-session";
 const { APP_SECRET, MONGO_URL } = config;
 import path from "path";
 import { fileURLToPath } from "url";
@@ -23,13 +24,27 @@ import { verifyUser } from "./middleware/verification.js";
 
 dotenv.config();
 //session
-const MongoDBStoreSession = MongoDBStore(session);
-const store = new MongoDBStoreSession({
-  uri: MONGO_URL,
-  collection: "sessions",
+const MySQLStoreSession = MySQLStore(session);
+
+const sessionStore = new MySQLStoreSession({
+  host: 'localhost', // MySQL host
+  port: 3306, // MySQL port
+  user: 'root', // MySQL username
+  password: 'Faith@2007', // MySQL password
+  database: 'captech', // MySQL database name
+  createDatabaseTable: true, // Create sessions table if it doesn't exist
+  schema: {
+    tableName: 'sessions', // Name of the sessions table
+    columnNames: {
+      session_id: 'session_id',
+      expires: 'expires',
+      data: 'data',
+    },
+  },
 });
 
-store.on("error", function (error) {
+
+sessionStore.on("error", function (error) {
   assert.ifError(error);
   assert.ok(false);
 });
@@ -55,7 +70,7 @@ const App = async (app) => {
   // Enable CORS
   app.use(
     cors({
-      origin: ["*", "http://localhost:4422", "https://captech.netlify.app", "https://6z8nc489-4422.euw.devtunnels.ms"],
+      origin: ["*", "http://localhost:4422", "http://localhost:3000"],
       credentials: true,
     })
   );
@@ -63,12 +78,17 @@ const App = async (app) => {
   //setup session
   app.use(
     session({
-      secret: APP_SECRET,
-      saveUninitialized: true,
+      secret: 'captecstoresession',
       resave: false,
-      store: store,
+      saveUninitialized: false,
+      store: sessionStore,
+      cookie: {
+        maxAge: 1000 * 60 * 60 * 24,
+        httpOnly: true,
+      },
     })
   );
+
 
   app.use("/api/inventory", inventoryRoutes);
   app.use("/api/inventory", mobileRoutes);
@@ -78,6 +98,7 @@ const App = async (app) => {
   app.use("/api/category", categoryRoutes);
   app.use("/api/search", searchroutes);
   app.use("/api/distribution", distributionRoutes);
+  app.use("/api/transfer", transferRoutes)
   app.use("/api/status", (req, res) => {
     res.status(200).json({ message: "Server is up and running" });
   });

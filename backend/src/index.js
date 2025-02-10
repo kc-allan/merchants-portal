@@ -6,11 +6,10 @@ import dotEnv from "dotenv"
 dotEnv.config()
 
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 const HOST = '0.0.0.0'
 const startServer = async () => {
-  const app = express();
-  await connectionDB();
+  const app = express()
   await App(app);
   app
     .listen(PORT, HOST, () => {

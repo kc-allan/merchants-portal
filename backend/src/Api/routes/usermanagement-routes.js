@@ -19,7 +19,7 @@ router.get("/all", verifyUser, findAllUsers);
 router.get("/profile/:email", verifyUser, getUserProfile);
 router.put("/update/profile", verifyUser, userProfileUpdate);
 router.put("/update/role", verifyUser, userUpdateRole);
-router.put("/update/status", verifyUser, userUpdateStatus);
+router.put("/update/status", userUpdateStatus);
 router.put(
   "/update/identificationbackward",
   verifyUser,

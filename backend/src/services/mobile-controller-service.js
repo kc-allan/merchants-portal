@@ -23,57 +23,40 @@ class MobilemanagementService {
   }
   //get product profile
   async createnewPhoneproduct(newphoneproduct) {
-    console.log("newPhone", newphoneproduct)
     try {
-      const { phoneDetails, financeDetails, user, availableStock } = newphoneproduct
-      const {
-        CategoryId,
-        IMEI,
-        serialNumber,
-        productcost,
-        commission,
-        discount,
-        color,
-        productType,
-        supplierName,
-        faultyItems,
-      } = phoneDetails;
-
-      await this.category.getCategoryById(CategoryId);
-
-      const batchNumber = await this.generateBatchNumber(CategoryId)
-      const newProduct = await this.mobile.createphoneStock({
-        CategoryId,
-        IMEI,
-        serialNumber,
-        supplierName,
-        faultyItems,
-        batchNumber,
-        productcost,
-        commission,
-        discount,
-        productType,
-        color,
-        user,
-        availableStock,
-        financeDetails
-      });
-      //add product to its category
-      const category = await this.category.AddItemInProduct({ id: CategoryId, itemId: newProduct._id });
-      const barcodePath = await this.generateAndSaveBarcode(newProduct._id);
-      if (!barcodePath) {
-        throw new Error("Barcode path is undefined");
+      const { phoneDetails, financeDetails, user, availableStock } =
+        newphoneproduct;
+      const { CategoryId } = phoneDetails;
+      const category = parseInt(CategoryId, 10);
+      const categoryExist = await this.category.getCategoryById(category);
+      if (!categoryExist) {
+        throw new APIError(
+          "Invalid category",
+          STATUS_CODE.BAD_REQUEST,
+          "Invalid category"
+        );
       }
-
-      // Add barcode path to the product and save
-      newProduct.barcodepath = barcodePath;
-      await newProduct.save();
-
-      // Generate the barcode print PDF
-      const pdfPath = await this.generateBarcodePDF(newProduct);
+      const shopFound = await this.shop.findShop({ name: "Kahawa 2323" });
+      if (!shopFound) {
+        throw new APIError(
+          "Shop not found",
+          STATUS_CODE.NOT_FOUND,
+          "Shop not found"
+        );
+      }
+      const shopId = shopFound.id;
+      const payload = {
+        phoneDetails,
+        financeDetails,
+        shopId,
+        user,
+      };
+      const newProduct = await this.mobile.createPhonewithFinaceDetails(
+        payload
+      );
       return newProduct;
     } catch (err) {
-      console.log(err);
+      // console.log(err);
       if (err instanceof APIError) {
         throw err;
       }
@@ -92,16 +75,15 @@ class MobilemanagementService {
       const hours = String(now.getHours()).padStart(2, "0");
       const minutes = String(now.getMinutes()).padStart(2, "0");
 
-      const productComponent = categoryId.slice(0, 5).toUpperCase()
+      const productComponent = categoryId.slice(0, 5).toUpperCase();
       const batchNumber = `${year}${month}${day}-${hours}${minutes}-${productComponent}`;
       return batchNumber;
-    }
-    catch (err) {
+    } catch (err) {
       throw new APIError(
         "batch number error",
         STATUS_CODE.INTERNAL_ERROR,
         "internal sever error"
-      )
+      );
     }
   }
   async findSpecificMobileProduct(id) {
@@ -143,6 +125,13 @@ class MobilemanagementService {
       const history = await this.mobile.capturespecificproductforhistory({
         id,
       });
+      if (history.length === 0) {
+        throw new APIError(
+          "No history found for this product",
+          STATUS_CODE.NOT_FOUND,
+          "No history found"
+        );
+      }
       return history;
     } catch (err) {
       if (err instanceof APIError) {
@@ -156,91 +145,18 @@ class MobilemanagementService {
     }
   }
 
-
-  async generateAndSaveBarcode(productId) {
-    try {
-      const barcodeDir = path.join(__dirname, "..", "public", "barcodes");
-      await fs.mkdir(barcodeDir, { recursive: true });
-      const barcodePath = path.join(barcodeDir, `${productId}.png`);
-
-      await new Promise((resolve, reject) => {
-        bwipjs.toBuffer(
-          {
-            bcid: "code128",
-            text: productId.toString(),
-            scale: 3,
-            height: 10,
-            includetext: true,
-            textxalign: "center",
-          },
-          (err, png) => {
-            if (err) {
-              reject(err);
-            } else {
-              fs.writeFile(barcodePath, png).then(resolve).catch(reject);
-            }
-          }
-        );
-      });
-      return barcodePath;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async generateBarcodePDF(product) {
-    try {
-      const barcodePath = product.barcodepath;
-      if (!barcodePath) {
-        throw new Error("Barcode path is undefined");
-      }
-
-      const barcodeImage = await fs.readFile(barcodePath);
-
-      const pdfDoc = await PDFDocument.create();
-      const page = pdfDoc.addPage([500, 200]);
-      const pngImage = await pdfDoc.embedPng(barcodeImage);
-      const { width, height } = pngImage.scale(1);
-
-      page.drawText("Product Barcode", {
-        x: 50,
-        y: 150,
-        size: 24,
-        color: rgb(0, 0, 0),
-      });
-
-      page.drawImage(pngImage, {
-        x: (500 - width) / 2,
-        y: (200 - height) / 2 - 20,
-        width,
-        height,
-      });
-
-      const pdfBytes = await pdfDoc.save();
-      const pdfPath = path.join(
-        __dirname,
-        "..",
-        "public",
-        "barcodes",
-        `${product._id}-barcode.pdf`
-      );
-      await fs.writeFile(pdfPath, pdfBytes);
-      return pdfPath;
-    } catch (error) {
-      throw error;
-    }
-  }
-
   async confirmDistribution(confirmdeleliverydetails) {
     try {
-      const { shopname, userId, productId, quantity, transferId, userName } =
+      const { shopname, userId, stockId, transferID } =
         confirmdeleliverydetails;
 
       //lets make a  parallel access to the database
-      let [mobileProduct, shopFound] = await Promise.all([
-        this.mobile.findItem(productId),
+      let [mobileProduct, shopFound, transferDetails] = await Promise.all([
+        this.mobile.findItem(stockId),
         this.shop.findShop({ name: shopname }),
+        this.mobile.findMobileTransferHistory(transferID),
       ]);
+      console.log(userId);
       //i have seen it wise if to verify if product exist and verify transfer
       if (!mobileProduct) {
         throw new APIError(
@@ -260,14 +176,28 @@ class MobilemanagementService {
           STATUS_CODE.NOT_FOUND,
           "PRODUCT IS SOLD"
         );
-      } else if (mobileProduct.transferHistory.length === 0) {
+      }
+      if (!transferDetails) {
         throw new APIError(
           "not found",
-          STATUS_CODE.NOT_FOUND,
-          "NO TRANSFER HISTORY FOUND"
+          STATUS_CODE.BAD_REQUEST,
+          "TRANSFER HISTORY NOT FOUND"
         );
       }
-
+      if (transferDetails.status === "confirmed") {
+        throw new APIError(
+          "already confirmed",
+          STATUS_CODE.BAD_REQUEST,
+          "product already confirmed"
+        );
+      }
+      if (transferDetails.productID !== stockId) {
+        throw new APIError(
+          "mismatch error",
+          STATUS_CODE.BAD_REQUEST,
+          "appears a mismatch on productid"
+        );
+      }
       if (!shopFound) {
         throw new APIError(
           "not found",
@@ -277,9 +207,9 @@ class MobilemanagementService {
       }
       const shopId = shopFound.id;
 
-      const sellerAssinged = shopFound.sellers.find(
-        (seller) => seller._id.toString() === userId.toString()
-      );
+      const sellerAssinged = shopFound.assignment.find((seller) => {
+        return seller.actors.id === userId && seller.status === "assigned";
+      });
       if (!sellerAssinged) {
         throw new APIError(
           "Unauthorized",
@@ -287,85 +217,25 @@ class MobilemanagementService {
           "You are not authorized to confirm arrival"
         );
       }
-      let transfer = mobileProduct.transferHistory.find((transfer) => {
-        return transfer._id.toString() === transferId.toString();
-      });
-      if (transfer.status === "confirmed") {
-        throw new APIError(
-          "bad request",
-          STATUS_CODE.BAD_REQUEST,
-          "product already confirmed"
-        )
-      }
-
-      if (transfer) {
-        transfer.status = "confirmed";
-        transfer.confirmedBy = userName;
-      } else {
-        throw new APIError(
-          "not found",
-          STATUS_CODE.NOT_FOUND,
-          "TRANSFER NOT FOUND"
-        );
-      }
-      //lets filter null productId
-      const filterdPhoneItems = shopFound.newPhoneItem.filter((items) => {
-        return items.productID !== null
-      })
-      let newPhone = filterdPhoneItems.find((phone) => {
-        return phone.productID.id.toString() === productId.toString();
-      });
-      if (!newPhone) {
-        throw new APIError(
-          "not found",
-          STATUS_CODE.NOT_FOUND,
-          "NEW PHONE NOT FOUND"
-        );
-      }
-
-      if (newPhone.quantity < quantity) {
-        throw new APIError(
-          "insufficient quantity",
-          STATUS_CODE.NOT_FOUND,
-          "NOT ENOUGH QUANTITY"
-        );
-      }
-      const newPhoneItem = newPhone.id;
-      const updatePhone = await this.shop.updateConfirmationOfProduct(
-        shopId,
-        newPhoneItem,
-        userName
-      );
-
-      const confirmedItem = {
-        stock: newPhone.productID.id,
-        quantity: newPhone.quantity,
-        categoryId: newPhone.categoryId,
+      //update  transfer history table data
+      const distributionData = {
+        id: transferID,
+        status: "confirmed",
+        userId: userId,
       };
-
-      if (
-        newPhone.productStatus === "new stock" ||
-        newPhone.productStatus === "new transfer"
-      ) {
-        shopFound = await this.shop.addPhoneStock(shopId, confirmedItem);
-      } else if (newPhone.productStatus === "return of product") {
-        const productFound = shopFound.phoneItems.find((phoneItem) => {
-          return phoneItem.id.toString() === newPhone.productID.toString();
-        });
-        if (productFound) {
-          productFound.quantity += newPhone.quantity;
-        } else {
-          throw new APIError(
-            "not found",
-            STATUS_CODE.NOT_FOUND,
-            "PRODUCT NOT FOUND"
-          );
-        }
-      }
-      await this.mobile.saveMobile(mobileProduct);
-      await this.shop.saveShop(shopFound);
+      //update mobileItems table data
+      const confirmedData = {
+        shopId: shopId,
+        transferId: transferID,
+        userId: userId,
+        status: "confirmed",
+      };
+      await Promise.all([
+        this.mobile.updateConfirmedmobileItem(confirmedData),
+        this.mobile.updatetransferHistory(distributionData),
+      ]);
     } catch (err) {
-      console.log("ERERE", err)
+      console.log("ERERE", err);
       if (err instanceof APIError) {
         throw err;
       }
@@ -376,7 +246,7 @@ class MobilemanagementService {
       );
     }
   }
-  async updatePhoneStock(id, updates, userName) {
+  async updatePhoneStock(id, updates, userId) {
     try {
       if (!id) {
         throw new APIError(
@@ -385,14 +255,24 @@ class MobilemanagementService {
           "id not found"
         );
       }
-
+      const shopFound = await this.shop.findShop({ name: "Kahawa 2323" });
+      if (!shopFound) {
+        throw new APIError(
+          "Shop not found",
+          STATUS_CODE.NOT_FOUND,
+          "Shop not found"
+        );
+      }
+      const shopId = shopFound.id;
+      const mobileId = parseInt(id, 10);
+      const user = parseInt(userId, 10);
       const allowedFields = [
         "IMEI",
         "stockStatus",
         "availableStock",
         "commission",
         "productcost",
-        "discount"
+        "discount",
       ];
       const validateUpdateField = Object.keys(updates).filter((key) =>
         allowedFields.includes(key)
@@ -406,9 +286,10 @@ class MobilemanagementService {
       }
       // Update the phone stock
       const updatedPhone = await this.mobile.updatethephoneStock(
-        id,
+        mobileId,
         updates,
-        userName
+        user,
+        shopId
       );
 
       return updatedPhone;
@@ -444,138 +325,6 @@ class MobilemanagementService {
         "item service error",
         STATUS_CODE.INTERNAL_ERROR,
         "cannot find item"
-      );
-    }
-  }
-
-
-  async createNewMobileTransfer(transferDetails) {
-    try {
-      const { mainShop, distributedShop, stockId, quantity, userName } = transferDetails;
-      const parsedQuantity = parseInt(quantity, 10);
-      if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
-        throw new APIError(
-          "transfer error",
-          STATUS_CODE.BAD_REQUEST,
-          "please insert a number"
-        );
-      }
-      let [ShopOwningtheItem, ShoptoOwntheItem] = await Promise.all([
-        this.shop.findShop({ name: mainShop }),
-        this.shop.findShop({ name: distributedShop }),
-      ]);
-      if (!ShopOwningtheItem || !ShoptoOwntheItem) {
-        throw new APIError(
-          "Shop not found",
-          404,
-          "One of the specified shops does not exist"
-        );
-      }
-
-      const shopId = ShopOwningtheItem._id;
-      const shopToId = ShoptoOwntheItem._id;
-      //you cannot transfer to the same shop
-      if (shopId.toString() === shopToId.toString()) {
-        throw new APIError(
-          "transfer error",
-          STATUS_CODE.BAD_REQUEST,
-          "you cannot tranfer to the same shop"
-        );
-      }
-      let stockItem = await this.mobile.findItem(stockId);
-      //confirm if the stock exist in the shop thats initializing the transfer
-      let existingStockItem = await ShopOwningtheItem.phoneItems.find(
-        (item) => {
-          if (item.stock && item.stock._id) {
-            return item.stock._id.toString() === stockId.toString();
-          }
-          return false;
-        }
-      );
-      if (!existingStockItem) {
-        throw new APIError(
-          "transfer error",
-          STATUS_CODE.BAD_REQUEST,
-          `stock not found in ${mainShop}`
-        );
-      }
-      if (existingStockItem.quantity < parsedQuantity) {
-        throw new APIError(
-          "transfer error",
-          STATUS_CODE.BAD_REQUEST,
-          `not enough stock to transfer ${parsedQuantity} units`
-        );
-      }
-      existingStockItem.quantity -= parsedQuantity;
-      const newTransfer = {
-        quantity: parsedQuantity,
-        fromShop: mainShop,
-        toShop: distributedShop,
-        transferdBy: userName,
-        status: "pending",
-        type: "transfer",
-      };
-      stockItem = await this.mobile.updateTransferHistory(stockId, newTransfer);
-
-      const addedTransfer =
-        stockItem.transferHistory[stockItem.transferHistory.length - 1];
-      const distributionId = addedTransfer._id;
-      //check if the shop receiving contains the stock
-      let shoptoOwntheItemExistingStock =
-        await ShoptoOwntheItem.phoneItems.find((item) => {
-          if (item.stock && item.stock._id) {
-            return item.stock._id.toString() === stockId.toString();
-          }
-          return false;
-        });
-
-      if (!shoptoOwntheItemExistingStock) {
-        const phoneDetails = {
-          productID: stockId,
-          categoryId: stockItem.CategoryId,
-          quantity: parsedQuantity,
-          status: "pending",
-          transferId: distributionId,
-          productStatus: "new stock",
-        };
-        const shopId = ShoptoOwntheItem._id;
-        ShoptoOwntheItem = await this.shop.newAddedphoneItem(
-          shopId,
-          phoneDetails
-        );
-      } else if (shoptoOwntheItemExistingStock.quantity === 0) {
-        const phoneDetails = {
-          productID: stockId,
-          categoryId: stockItem.CategoryId,
-          quantity: parsedQuantity,
-          status: "pending",
-          transferId: distributionId,
-          productStatus: "return of product",
-        };
-        const shopId = ShoptoOwntheItem._id;
-        ShoptoOwntheItem = await this.mobile.updateTransferHistory(
-          shopId,
-          phoneDetails
-        );
-      } else {
-        throw new APIError(
-          "phone inserting error",
-          STATUS_CODE.BAD_REQUEST,
-          "phone already exist"
-        );
-      }
-      await this.mobile.saveMobile(stockItem);
-      await this.shop.saveShop(ShopOwningtheItem);
-      await this.shop.saveShop(ShoptoOwntheItem);
-    } catch (err) {
-      console.log("@@", err);
-      if (err instanceof APIError) {
-        throw err;
-      }
-      throw new APIError(
-        "Distribution service error",
-        STATUS_CODE.INTERNAL_ERROR,
-        err
       );
     }
   }

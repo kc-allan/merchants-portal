@@ -11,14 +11,14 @@ interface ProductItem {
   transferId: any;
   id: React.Key;
   productID: {
-    _id: any;
+    id: any;
     itemName: string;
     itemModel: string;
     minprice: string;
     maxprice: string;
   };
   stock?: {
-    _id: any;
+    id: any;
     itemName: string;
     itemModel: string;
     minprice: string;
@@ -89,7 +89,10 @@ const Modal: React.FC<ModalProps> = ({
 
   const renderItems = () => {
     const items =
-      filter === 'phone' ? shopData.newPhoneItem.filter((item) => item.status === 'pending') : shopData.newAccessory.filter((item) => item.status === 'pending');
+      filter === 'phone'
+        ? shopData.newPhoneItem.filter((item) => item.status === 'pending')
+        : shopData.newAccessory.filter((item) => item.status === 'pending');
+    console.log("items", items);
     return items?.map((item: ProductItem | any, index: number) => (
       // <div
       //   key={index}
@@ -136,7 +139,7 @@ const Modal: React.FC<ModalProps> = ({
       //     onClick={() =>
       //       handleApprove({
       //         transferId: item.transferId,
-      //         productID: item.productID?._id || item.stock?._id,
+      //         productID: item.productID?.id || item.stock?.id,
       //       })
       //     }
       //   >
@@ -147,29 +150,29 @@ const Modal: React.FC<ModalProps> = ({
         key={index}
         className="border-b border-[#eee] dark:border-strokedark w-full text-center *:p-2"
       >
-        <td>{item.categoryId?.itemModel || '-'}</td>
-        <td>{item.categoryId?.itemName || '-'}</td>
-        <td>{item.productID?.IMEI || '-'}</td>
+        <td>{item.categoryId.itemModel}</td>
+        <td>{item.categoryId.itemName}</td>
+        <td>{item.stock?.IMEI || '-'}</td>
         <td>
           <span
             className={`${
-              item?.status === 'confirmed' ? 'bg-success/60' : 'bg-warning/60'
+              item.status === 'confirmed' ? 'bg-success/60' : 'bg-warning/60'
             } px-2 rounded-full text-center`}
           >
-            {item?.status}
+            {item.status}
           </span>
         </td>
         <td>
-          <span className="text-danger">{item.categoryId?.minPrice}</span> /{' '}
-          <span className="text-primary">{item.categoryId?.maxPrice}</span>
+          <span className="text-danger">{item.categoryId.minPrice}</span> /{' '}
+          <span className="text-primary">{item.categoryId.maxPrice}</span>
         </td>
         <td>
           <button
             className="px-2 text-sm tracking-wide text-black text-center dark:text-white flex items-center justify-center"
             onClick={() =>
               handleApprove({
-                transferId: item?.transferId,
-                productID: item.productID?._id,
+                transferId: item.transferId,
+                productID: item.stock?.id,
               })
             }
           >
@@ -235,7 +238,7 @@ const Modal: React.FC<ModalProps> = ({
                   shopData.newPhoneItem.map((item: any) => {
                     handleApprove({
                       transferId: item.transferId,
-                      productID: item.productID?._id,
+                      productID: item.stock.id,
                     });
                   });
                 }}

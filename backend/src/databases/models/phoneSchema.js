@@ -49,7 +49,7 @@ const phoneSchema = new Schema(
       default: "supplier",
     },
     financeDetails: {
-      financer: { type: String, default: "captech" },
+      financer: { type: String, default: "Captech" },
       financeAmount: { type: String, default: 0 },
       financeStatus: { type: String, enum: ["pending", "paid"], default: "pending" },
       dueDate: { type: Date, default: Date.now }

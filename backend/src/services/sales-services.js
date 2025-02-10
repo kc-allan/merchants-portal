@@ -16,7 +16,6 @@ class salesmanagment {
     this.category = new CategoryManagementRepository();
   }
 
-
   async Accessorysales(salesDetail) {
     try {
       const {
@@ -28,44 +27,49 @@ class salesmanagment {
         shopname,
         soldUnits,
         soldprice,
-        sellerId,
+        seller,
+        transferId
       } = salesDetail;
-
-      let [seller, shopFound, productAvailability] = await Promise.all([
+      const stockId = parseInt(productId, 10);
+      const sellerId = parseInt(seller, 10);
+      const categoryId = parseInt(CategoryId, 10);
+      const quantity = parseInt(soldUnits, 10);
+      const productTransferId = parseInt(transferId)
+      let [userfound, shopFound, productAvailability, assignedShop] = await Promise.all([
         this.user.findUserById({ id: sellerId }),
         this.shop.findShop({ name: shopname }),
-        this.inventory.findProductById(productId),
+        this.inventory.findProductById(stockId),
+        this.user.findAssignedShop(sellerId)
       ]);
       let saleType;
-      const quantity = parseInt(soldUnits, 10);
+
 
       if (!shopFound) {
         throw new APIError(
           "not found",
           STATUS_CODE.NOT_FOUND,
           ` ${shopname} shop NOT FOUND`
-        )
+        );
       }
-      if (!seller) {
+      const shopId = parseInt(shopFound.id, 10);
+
+      if (!userfound) {
         throw new APIError(
           "not found",
           STATUS_CODE.NOT_FOUND,
           "seller not found"
         );
       }
-      if (seller.assignedShop === null) {
+      const assigned = assignedShop.filter(
+        (assignment) => assignment.status === "assigned"
+      );
+      console.log("assignedeieihif", assigned),
+        console.log("userfound", userfound);
+      if (assigned[0].shops.shopName !== shopname) {
         throw new APIError(
-          "seller is not assigned to any shop",
+          "unauthorised to make sales",
           STATUS_CODE.UNAUTHORIZED,
-          "you currently not assigned to any  shop"
-        )
-      }
-
-      if (seller.assignedShop.name !== shopname) {
-        throw new APIError(
-          "unauthorized",
-          STATUS_CODE.UNAUTHORIZED,
-          `you are not authorized to make sales in ${shopname} shop`
+          "not allowed to make sales in this shop"
         );
       }
       if (seller.workingstatus === "suspended") {
@@ -89,94 +93,73 @@ class salesmanagment {
         );
       }
 
-      if (productAvailability.stockStatus === "deleted" || productAvailability.stockStatus === "suspended") {
-        throw new APIError(
-          "product not available",
-          STATUS_CODE.NOT_FOUND,
-          `Product ${productAvailability.CategoryId.itemName} model ${productAvailability.CategoryId.itemModel} is currently ${productAvailability.stockStatus}`
-        )
-      }
-      const shopId = shopFound.id;
-      const shopName = shopFound.name;
-      const filteredStockItem = shopFound.stockItems.filter((item) => {
-        return item.stock !== null
-      })
-      const stockItem = filteredStockItem.find((item) =>
-        item.stock._id.toString() === productId.toString()
+      const filteredPhoneItem = shopFound.accessoryItems.filter((item) => {
+        return item.accessoryID !== null;
+      });
+      const stockItem = filteredPhoneItem.find(
+        (item) => item.accessoryID === stockId && item.transferId === productTransferId
       );
       if (!stockItem) {
         throw new APIError(
           "Product not available in the shop",
           STATUS_CODE.NOT_FOUND,
-          `${productAvailability.CategoryId.itemName} model ${productAvailability.CategoryId.itemModel} not available in the shop`
-        )
+          `${productAvailability.categories.itemName} model ${productAvailability.categories.itemModel} not available in the shop`
+        );
       }
-      if (stockItem.quantity < soldUnits) {
+      if (stockItem.quantity < quantity) {
         throw new APIError(
           "Insufficient accessory to sell",
           STATUS_CODE.BAD_REQUEST,
-          `Not enough stock of ${productAvailability.CategoryId.itemName} model ${productAvailability.CategoryId.itemModel}`
-        )
-      }
-
-
-      //update shop sales
-      const updatedShop = await this.shop.updateSalesOfAccessory(shopId, productId, soldUnits)
-      //update the overall stock
-      const updatedSales = this.inventory.updateSalesAccessoryStock({
-        id: productAvailability.id.toString(),
-        shopName: shopName,
-        quantity: soldUnits,
-        seller: seller.name
-      });
-
-      if (!updatedSales) {
-        throw new APIError(
-          "Error updating stock",
-          STATUS_CODE.INTERNAL_ERROR,
-          "Error updating stock"
+          `Not enough stock of ${productAvailability.categories.itemName} model ${productAvailability.categories.itemModel}`
         );
       }
-
-      const commissionAmount =
-        (soldprice * productAvailability.commission) / 100;
-
+      if (stockItem.status === "pending") {
+        throw new APIError(
+          "stock not available for sale",
+          STATUS_CODE.BAD_REQUEST,
+          "stock not available for sale"
+        )
+      }
+      //update shop sales
+      const updatedShop = await this.shop.updateSalesOfAccessory(
+        shopId,
+        productTransferId,
+        soldUnits
+      );
+      //update the overall stock
+      const commissionAmount = parseInt(productAvailability.commission, 10);
       //calculate the profit
 
       const totalrevenue = soldprice;
-      const costperunit = productAvailability.productcost;
+      const costperunit = productAvailability.productCost;
       const totalcost = soldUnits * costperunit;
       const profit = totalrevenue - totalcost - commissionAmount;
 
       //update sales person sales history
-      await this.user.updateUserSales({
-        id: seller.id,
-        email: seller.email,
-        quantity: soldUnits,
-        shopId: shopId,
-        productId: productAvailability.id,
-        categoryId: productAvailability.CategoryId,
-        price: soldprice,
-      });
+
       const confirmedSales = {
-        ...salesDetail,
+        productID: stockId,
+        shopID: shopId,
+        sellerId: sellerId,
         profit: profit,
+        soldPrice: soldprice,
+        quantity: 1,
         commission: commissionAmount,
-        shopId: shopId,
-        saleType: "direct",
-        shoplocation: shopFound.address,
-        customername: customerName,
-        customeremail: customerEmail,
-        customerphonenumber: customerphonenumber,
+        commisssionStatus: "pending",
+        shopID: shopId,
+        categoryId: categoryId,
+        finance: financeDetails.id,
+        financer: financeDetails.financer,
+        financeAmount: financeDetails.financeAmount,
+        financeStatus: financeDetails.financeStatus,
+        paymentmethod: paymentmethod,
+        salesType: typeofFinance,
+        customerName: customerName,
+        customerEmail: customerEmail,
+        customerPhoneNumber: customerphonenumber,
       };
-      const recordSales = await this.sales.createnewsales({
-        salesDetails: confirmedSales,
-      });
-      // const salesId = recordSales.id;
-      // await this.category.updateSalesOfProduct({
-      //   id: CategoryId,
-      //   salesId: salesId,
-      // });
+      const recordSales = await this.sales.createnewAccessoriesales(confirmedSales);
+
       return recordSales;
     } catch (err) {
       if (err instanceof APIError) {
@@ -195,15 +178,27 @@ class salesmanagment {
         productId,
         shopname,
         soldprice,
-        sellerId,
+        seller,
+        paymentmethod,
+        CategoryId,
       } = saledetail;
-      let salesType;
-      let financeStatus
+
       const soldUnits = 1;
-      let [userfound, shopfound, productAvailability] = await Promise.all([
+      const stockId = parseInt(productId, 10);
+      const sellerId = parseInt(seller, 10);
+      const categoryId = parseInt(CategoryId, 10);
+      let [
+        userfound,
+        shopfound,
+        productAvailability,
+        assignedShop,
+        financeDetails,
+      ] = await Promise.all([
         this.user.findUserById({ id: sellerId }),
         this.shop.findShop({ name: shopname }),
-        this.mobile.findPhoneById({ id: productId }),
+        this.mobile.findItem(stockId),
+        this.user.findAssignedShop(sellerId),
+        this.mobile.findMobileFinance(stockId),
       ]);
       if (!userfound) {
         throw new APIError("seller not found", STATUS_CODE.NOT_FOUND, null);
@@ -214,21 +209,19 @@ class salesmanagment {
           "not found",
           STATUS_CODE.NOT_FOUND,
           "product not found"
-        )
+        );
       }
 
-      if (userfound.assignedShop === null) {
+      const assigned = assignedShop.filter(
+        (assignment) => assignment.status === "assigned"
+      );
+      console.log("assignedeieihif", assigned),
+        console.log("userfound", userfound);
+      if (assigned[0].shops.shopName !== shopname) {
         throw new APIError(
-          "seller is not assigned to any shop",
+          "unauthorised to make sales",
           STATUS_CODE.UNAUTHORIZED,
-          "you currently not assigned to any  shop"
-        )
-      }
-      if (userfound.assignedShop.name !== shopname || userfound.assignedShop === null) {
-        throw new APIError(
-          "unauthorized",
-          STATUS_CODE.UNAUTHORIZED,
-          "you are not authorized to make sales in this shop"
+          "not allowed to make sales in this shop"
         );
       }
       if (userfound.workingstatus === "suspendend") {
@@ -244,218 +237,196 @@ class salesmanagment {
           "you currently inactive"
         );
       }
-      const filteredPhoneItem = shopfound.phoneItems.filter((item) => {
-        return item.stock !== null
-      })
-      const stockItem = filteredPhoneItem.find((item) =>
-        item.stock._id.toString() === productId.toString()
+      const filteredPhoneItem = shopfound.mobileItems.filter((item) => {
+        return item.mobileID !== null;
+      });
+      const stockItem = filteredPhoneItem.find(
+        (item) => item.mobileID === stockId
       );
-
+      console.log("stokc", stockItem);
       if (!stockItem) {
         throw new APIError(
           "product not available in the shop",
           STATUS_CODE.NOT_FOUND,
-          `The  ${productAvailability.CategoryId.itemName} model ${productAvailability.CategoryId.itemModel} is not available in this shop`
-        )
+          `the product is not found in ${shopname} shop`
+        );
       }
-      if (stockItem.quantity < soldUnits) {
+      console.log("soldunits", soldUnits);
+      if (
+        (stockItem.quantity < 1 && stockItem.status === "transferd") ||
+        stockItem.status === "pending"
+      ) {
         throw new APIError(
-          "Insufficient stock in the shop",
+          "stock not available for sale",
           STATUS_CODE.BAD_REQUEST,
-          `${productAvailability.CategoryId.itemName} model ${productAvailability.CategoryId.itemModel} is insufficient`
+          `stock not available  in ${shopname}`
         );
       }
       //update shop inventory
-      const shopId = shopfound.id;
-      const updatedShopSales = await this.shop.updateSalesOfPhone(shopId, productId, soldUnits);
-      if (!updatedShopSales) {
-        throw new APIError(
-          "internal error",
-          STATUS_CODE.INTERNAL_ERROR,
-          "internal error"
-        );
-      }
-
+      const shopId = parseInt(shopfound.id, 10);
+      const updatedShopSales = await this.shop.updateSalesOfPhone(
+        shopId,
+        stockId,
+        soldUnits
+      );
+      console.log("updatedShoSales", updatedShopSales);
+      let typeofFinance =
+        financeDetails.financer === "captech" ? "direct" : "finance";
       //update the overall products
-      const updateStock = await this.mobile.updatesalesofaphone({
-        id: productAvailability.id,
-        shopId: updatedShopSales.id,
-        price: soldprice,
-        status: "sold",
-        quantity: soldUnits,
-        sellerId: sellerId,
-        seller: userfound.email,
-      });
+      const updatesOnPhone = await Promise.all([
+        this.mobile.updatesalesofaphone({
+          id: stockId,
+          sellerId: sellerId,
+          status: "sold",
+        }),
+        this.mobile.updateSoldPhone(stockId),
+      ]);
 
-      const commissionAmount =
-        (soldprice * productAvailability.commission) / 100;
+      const commissionAmount = parseInt(productAvailability.commission, 10);
 
       //calculate the profit
-      salesType = (productAvailability.financeDetails.financer !== "captech") ? "finance" : "direct";
-      financeStatus = (salesType === "finance") ? "pending" : "paid";
-      const costperunit = productAvailability.productcost;
+      const costperunit = productAvailability.productCost;
       const totalrevenue = soldUnits * soldprice;
       const totalcost = soldUnits * costperunit;
       const profit = totalrevenue - totalcost - commissionAmount;
       const confirmedSales = {
-        ...saledetail,
+        productID: stockId,
+        shopID: shopId,
+        sellerId: sellerId,
         profit: profit,
-        soldUnits: 1,
+        soldPrice: soldprice,
+        quantity: 1,
         commission: commissionAmount,
-        shopId: shopId,
-        saleType: salesType,
-        financeDetails: {
-          financer: productAvailability.financeDetails.financer,
-          financeAmount: productAvailability.financeDetails.financeAmount,
-          financeStatus: financeStatus
-        },
-        shoplocation: updatedShopSales.address,
-        customername: customerName,
-        customeremail: customerEmail,
-        customerphonenumber: customerphonenumber,
+        commisssionStatus: "pending",
+        shopID: shopId,
+        categoryId: categoryId,
+        finance: financeDetails.id,
+        financer: financeDetails.financer,
+        financeAmount: financeDetails.financeAmount,
+        financeStatus: financeDetails.financeStatus,
+        paymentmethod: paymentmethod,
+        salesType: typeofFinance,
+        customerName: customerName,
+        customerEmail: customerEmail,
+        customerPhoneNumber: customerphonenumber,
       };
-      const recordSales = await this.sales.createnewsales({
-        salesDetails: confirmedSales,
-      });
-      const updateProductSales = await this.category.updateSalesOfProduct({
-        id: productAvailability.id,
-        sales: recordSales.id,
-      });
-      await userfound.save();
+      const recordSales = await this.sales.createnewMobilesales(confirmedSales);
       return recordSales;
     } catch (err) {
+      console.log("err", err);
       if (err instanceof APIError) {
         throw err;
       }
       throw new APIError("internal errror", STATUS_CODE.INTERNAL_ERROR, err);
     }
   }
+
   async generategeneralsales({ startDate, endDate, page, limit }) {
     try {
-      const database = ["mobiles", "accessories"];
+      const salesTables = ["mobilesales", "accessorysales"];
       const skip = (page - 1) * limit;
-      const generalsalespromises = database.map(async (item) => {
+
+      const generalsalespromises = salesTables.map(async (table) => {
         return this.sales.findSales({
-          database: item,
-          startdate: startDate,
-          endDate: endDate,
-          skip: skip,
-          limit: limit,
+          salesTable: table,
+          startDate,
+          endDate,
         });
       });
 
-      const generalSalesresolve = await Promise.all(generalsalespromises);
+      const generalSalesResolve = await Promise.all(generalsalespromises);
+      const combinedSales = generalSalesResolve.flatMap(
+        (result) => result.generalReport
+      );
+      //console.log("combinedSales", combinedSales);
+      const transformedSales = combinedSales.map((sale) => ({
+        soldprice: sale._sum.soldPrice,
+        commission: sale._sum.commission,
+        totalprofit: sale._sum.profit,
+        totaltransaction: sale._count._all,
+        productDetails: {
+          productID: sale.productDetails?.id,
+          batchNumber: sale.productDetails?.batchNumber,
+          productCost: sale.productDetails?.productCost,
+          productType: sale.productDetails?.phoneType || "accessory",
+        },
+        categoryDetails: {
+          categoryId: sale.categoryDetails?.id,
+          category: sale.categoryDetails?.itemName || "Accessory",
+          itemName: sale.categoryDetails?.itemName,
+          itemModel: sale.categoryDetails?.itemModel,
+          brand: sale.categoryDetails?.brand,
+        },
+        shopDetails: {
+          id: sale.shopDetails?.id,
+          name: sale.shopDetails?.shopName,
+          address: sale.shopDetails?.address,
+        },
+        sellerDetails: {
+          name: sale.sellerDetails?.name,
+          id: sale.sellerDetails?.id,
+        },
+        saleType:
+          sale.financeDetails.financeStatus !== "N/A" ? "finance" : "direct",
+        financeDetails: sale.financeDetails,
+        createdAt: sale.createdAt,
+      }));
 
-
-      const combinedSales = generalSalesresolve.flatMap((result) => result.generalReport);
-
-      const analytics = await this.analyseSalesMetric(combinedSales)
-      const finance = combinedSales.filter((sale) => { return sale.saleType === "finance" });
-      const fullfilledSales = combinedSales.filter((sale) => { return sale.saleType !== "finance" || sale.financeDetails.financeStatus !== "pending" })
-
-      const sortedSales = combinedSales.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-      const paginatedSales = sortedSales.slice(skip, skip + limit);
-
-      const salesPerMonth = combinedSales.reduce((acc, sale) => {
-        const month = new Date(sale.createdAt).toLocaleString('default', { month: 'short' });
-        acc[month] = acc[month] ? acc[month] + sale.soldprice : sale.soldprice;
-        return acc;
-      }, {});
-
-      const salesPerMonthArray = Object.entries(salesPerMonth)
-        .map(([month, sales]) => ({ month, sales }))
-        .sort((a, b) => new Date(a.month) - new Date(b.month))
-        .reverse();
-
-      console.log("salesPerMonthArray", salesPerMonthArray);
-
-
-
-      const totalSales = fullfilledSales.reduce((acc, sale) => acc + sale.soldprice, 0);
-      const totalProfit = fullfilledSales.reduce((acc, sale) => acc + sale.totalprofit, 0);
-      const financeSales = finance.reduce((acc, sale) => acc + sale.financeDetails.financeAmount, 0);
-
-      if (!combinedSales.length) {
-        throw new APIError(
-          "No sales data found",
-          STATUS_CODE.NOT_FOUND,
-          "No sales data seen yet"
+      //console.log("transformedSales", transformedSales);
+      // Rest of your existing processing logic
+      const analytics = await this.analyseSalesMetric(transformedSales);
+      const finance = transformedSales.filter(
+        (sale) =>
+          sale.saleType === "finance" &&
+          sale.financeDetails.financeStatus === "pending"
+      );
+      const fullfilledSales = transformedSales.filter((sale) => {
+        return (
+          sale.saleType !== "finance" ||
+          sale.financeDetails.financeStatus !== "pending"
         );
-      }
+      });
 
-      return {
-        sales: paginatedSales,
-        analytics: analytics,
-        salesPerMonth: salesPerMonthArray,
-        totalSales,
-        totalProfit,
-        financeSales: financeSales,
-        totalPages: Math.ceil(combinedSales.length / limit),
-        currentPage: page,
-      };
+      const financeSales = finance.reduce(
+        (acc, sale) => acc + sale.financeDetails.financeAmount,
+        0
+      );
+      const totalProfit = fullfilledSales.reduce(
+        (acc, sale) => acc + sale.totalprofit,
+        0
+      );
+      const totalSales = combinedSales.reduce(
+        (acc, sale) => acc + sale._sum.soldPrice,
+        0
+      );
+      const totalCommission = combinedSales.reduce(
+        (acc, sale) => acc + sale._sum.commission,
+        0
+      );
+      //console.log("$%@@@totalcommission", totalCommission)
+      const paginatedSales = transformedSales.slice(skip, skip + limit);
+      console.log("#$#%$", paginatedSales)
+      return [
+        {
+          sales: {
+            sales: paginatedSales,
+            totalSales,
+            totalCommission,
+            totalProfit,
+            financeSales: financeSales,
+            totalPages: Math.ceil(transformedSales.length / limit),
+            currentPage: page,
+          },
+          analytics: {
+            analytics: analytics,
+          },
+        },
+      ];
     } catch (err) {
-      console.error("Error generating general sales:", err);
+      console.log("err", err);
       if (err instanceof APIError) {
         throw err;
       }
-      throw new APIError("Internal error", STATUS_CODE.INTERNAL_ERROR, err.message);
-    }
-  }
-
-  async getSalesDownloads(salesDetails) {
-    try {
-      const { financer, startDate, endDate, page, limit } = salesDetails;
-      const report = { financer, startDate, endDate, limit, page };
-      const sales = await this.sales.getFinancerReport(report);
-      if (!sales || sales.length === 0) {
-        throw new APIError("Not found", STATUS_CODE.NOT_FOUND, "SALES NOT FOUND");
-      }
-      const totalSales = sales.reduce((acc, sale) => acc + sale.soldprice, 0)
-      return { sales, totalSales };
-    } catch (err) {
-      console.error('Error generating PDF:', err);
-      if (err instanceof APIError) {
-        throw err
-      }
-      throw new Error('Failed to generate PDF report.');
-    }
-  }
-
-
-  async generateCategorySales(salesDetails) {
-    try {
-      const { categoryId, database, startDate, endDate, page, limit } = salesDetails
-      const skip = (page - 1) * limit;
-      const report = {
-        category: categoryId,
-        database: database,
-        startDate: startDate,
-        endDate: endDate,
-        limit: limit,
-        page: page,
-        skip: skip,
-      };
-
-      const generalReport = await this.sales.getReports(report);
-
-      if (
-        !generalReport.salesReport ||
-        generalReport.salesReport.length === 0
-      ) {
-        throw new APIError(
-          "not found",
-          STATUS_CODE.NOT_FOUND,
-          "no sales made yet"
-        );
-      }
-
-      return generalReport;
-    } catch (err) {
-      if (err instanceof APIError) {
-        throw err;
-      }
-
       throw new APIError(
         "internal error",
         STATUS_CODE.INTERNAL_ERROR,
@@ -464,117 +435,267 @@ class salesmanagment {
     }
   }
 
-  async generateShopSales({
-    shopname,
-    startDate,
-    endDate,
-    page,
-    limit,
-  }) {
+  async generateCategorySales(salesDetails) {
     try {
+      const { categoryId, startDate, endDate, page, limit } = salesDetails;
       const skip = (page - 1) * limit;
-      const database = ["accessories", "mobiles"]
-      const shopfound = await this.shop.findShop({ name: shopname });
 
-      if (!shopfound) {
-        throw new APIError(
-          "not found",
-          STATUS_CODE.NOT_FOUND,
-          "shop not found"
+      const generalSalesData = await this.generategeneralsales({
+        startDate,
+        endDate,
+        page,
+        limit,
+      });
+
+      const allSales = generalSalesData[0].sales.sales;
+
+      const fullfilledSales = allSales.filter(
+        (sale) => sale.categoryDetails.categoryId === categoryId
+      );
+      const filteredSales = fullfilledSales.filter((sale) => {
+        return (
+          sale.saleType !== "finance" ||
+          sale.financeDetails.financeStatus !== "pending"
         );
-      }
+      });
+      console.log("filterd", filteredSales);
+      const paginatedSales = fullfilledSales.slice(skip, skip + limit);
+      const transformSales = (sales) => {
+        return sales.map((sale) => ({
+          soldprice: sale.soldprice,
+          netprofit: sale.totalprofit,
+          commission: sale.commission,
+          productcost: sale.productDetails.productCost,
+          productmodel: sale.categoryDetails.itemModel,
+          productname: sale.categoryDetails.itemName,
+          totalnetprice: sale.soldprice,
+          totalsoldunits: sale.totaltransaction,
+          totaltransaction: sale.totaltransaction,
+          _id: {
+            productId: sale.productDetails.productID,
+            sellerId: sale.sellerDetails.id,
+            shopId: sale.shopDetails.id,
+          },
+          financeDetails: sale.financeDetails,
+          CategoryId: sale.categoryDetails.categoryId,
+          createdAt: sale.createdAt,
+          batchNumber: sale.productDetails.batchNumber,
+          category: sale.productDetails.productType,
+        }));
+      };
 
-      const generalSalesforTheShop = database.map(async (item) => {
-        const shopId = shopfound._id;
-        const report = {
-          shopId: shopId,
-          database: item,
-          startDate: startDate,
-          endDate: endDate,
-          limit: limit,
-          page: page,
-          skip: skip,
-        };
-        return await this.sales.getShopSales(report);
-      })
-      const generalresolve = await Promise.all(generalSalesforTheShop)
-      const combinedSales = generalresolve.flatMap((result) => result.shopSalesReport);
+      const transformedSales = transformSales(paginatedSales);
 
-      if (!combinedSales.length) {
-        throw new APIError(
-          "No sales data found",
-          STATUS_CODE.NOT_FOUND,
-          "No sales data seen yet"
-        );
-      }
-      const analytics = await this.analyseSalesMetric(combinedSales)
+      const totalSales = fullfilledSales.reduce(
+        (acc, sale) => acc + sale.soldprice,
+        0
+      );
+      const totalCommission = fullfilledSales.reduce(
+        (acc, sale) => acc + sale.commission,
+        0
+      );
+      const totalProfit = filteredSales.reduce(
+        (acc, sale) => acc + sale.totalprofit,
+        0
+      );
+      const financeSales = fullfilledSales
+        .filter(
+          (sale) =>
+            sale.saleType === "finance" &&
+            sale.financeDetails.financeStatus === "pending"
+        )
+        .reduce((acc, sale) => acc + sale.financeDetails.financeAmount, 0);
 
-      const sortedSales = combinedSales.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      // Paginate combined results
-      const paginatedSales = sortedSales.slice(skip, skip + limit);
-
-      // Calculate total sales and total profit
-      const totalSales = combinedSales.reduce((acc, sale) => acc + sale.soldprice, 0);
-      const totalProfit = combinedSales.reduce((acc, sale) => acc + sale.netprofit, 0);
       return {
-        sales: paginatedSales,
-        analytics: analytics,
-        totalSales,
-        totalProfit,
-        totalPages: Math.ceil(combinedSales.length / limit),
-        currentPage: page,
+        sales: {
+          sales: transformedSales,
+          totalSales,
+          totalCommission,
+          totalProfit,
+          financeSales,
+          totalPages: Math.ceil(fullfilledSales.length / limit),
+          currentPage: page,
+        },
+        analytics: {
+          analytics: await this.analyseSalesMetric(fullfilledSales),
+        },
       };
     } catch (err) {
+      console.error("Error generating category sales:", err);
       if (err instanceof APIError) {
         throw err;
       }
       throw new APIError(
-        "internal error",
+        "Internal error",
         STATUS_CODE.INTERNAL_ERROR,
-        err.message || "internal server  error"
+        err.message || "Internal server error"
       );
     }
   }
+  async generateShopSales(salesDetails) {
+    try {
+      const { shopId, startDate, endDate, page, limit } = salesDetails;
+      const skip = (page - 1) * limit;
+      const generalSalesData = await this.generategeneralsales({
+        startDate,
+        endDate,
+        page,
+        limit,
+      });
+
+      const allSales = generalSalesData[0].sales.sales;
+      console.log("allsales", allSales);
+      const fullfilledSales = allSales.filter(
+        (sale) => sale.shopDetails.id === shopId
+      );
+      const filteredSales = fullfilledSales.filter((sale) => {
+        return (
+          sale.saleType !== "finance" ||
+          sale.financeDetails.financeStatus !== "pending"
+        );
+      });
+      console.log("filterd", filteredSales);
+      const paginatedSales = fullfilledSales.slice(skip, skip + limit);
+      const transformSales = (sales) => {
+        return sales.map((sale) => ({
+          soldprice: sale.soldprice,
+          netprofit: sale.totalprofit,
+          commission: sale.commission,
+          productcost: sale.productDetails.productCost,
+          productmodel: sale.categoryDetails.itemModel,
+          productname: sale.categoryDetails.itemName,
+          totalnetprice: sale.soldprice,
+          totalsoldunits: sale.totaltransaction,
+          totaltransaction: sale.totaltransaction,
+          _id: {
+            productId: sale.productDetails.productID,
+            sellerId: sale.sellerDetails.id,
+            shopId: sale.shopDetails.id,
+          },
+          financeDetails: sale.financeDetails,
+          CategoryId: sale.categoryDetails.categoryId,
+          createdAt: sale.createdAt,
+          batchNumber: sale.productDetails.batchNumber,
+          category: sale.productDetails.productType,
+        }));
+      };
+
+      const transformedSales = transformSales(paginatedSales);
+
+      const totalSales = fullfilledSales.reduce(
+        (acc, sale) => acc + sale.soldprice,
+        0
+      );
+      const totalCommission = fullfilledSales.reduce(
+        (acc, sale) => acc + sale.commission,
+        0
+      );
+      const totalProfit = filteredSales.reduce(
+        (acc, sale) => acc + sale.totalprofit,
+        0
+      );
+      const financeSales = fullfilledSales
+        .filter(
+          (sale) =>
+            sale.saleType === "finance" &&
+            sale.financeDetails.financeStatus === "pending"
+        )
+        .reduce((acc, sale) => acc + sale.financeDetails.financeAmount, 0);
+
+      return {
+        sales: {
+          sales: transformedSales,
+          totalSales,
+          totalProfit,
+          totalCommission,
+          financeSales,
+          totalPages: Math.ceil(fullfilledSales.length / limit),
+          currentPage: page,
+        },
+        analytics: {
+          analytics: await this.analyseSalesMetric(fullfilledSales),
+        },
+      };
+    } catch (err) {
+      console.error("Error generating category sales:", err);
+      if (err instanceof APIError) {
+        throw err;
+      }
+      throw new APIError(
+        "Internal error",
+        STATUS_CODE.INTERNAL_ERROR,
+        err.message || "Internal server error"
+      );
+    }
+    // Rest of the logic remains the same...
+  }
+
   async analyseSalesMetric(salesData) {
     try {
       const productMetric = {};
       const sellerMetric = {};
 
-      await salesData.map(sale => {
-        const { soldprice, netprofit, _id, totaltransaction } = sale;
-        const { sellerId, CategoryId } = _id;
+      // Iterate through the sales data
+      salesData.forEach((sale) => {
+        const {
+          soldprice,
+          totalprofit,
+          totaltransaction,
+          productDetails,
+          categoryDetails,
+          sellerDetails,
+        } = sale;
+        //did some twisting so we can have transcation counted in terms of category
+        const productId = categoryDetails.itemName;
+        const sellerId = sellerDetails.id;
+        const productName = categoryDetails.itemName;
+        const sellerName = sellerDetails.name;
 
-        if (!productMetric[CategoryId]) {
-
-          productMetric[CategoryId] = {
-            productName: sale.productname,
+        // Update product metrics
+        if (!productMetric[productId]) {
+          productMetric[productId] = {
+            productName: productName,
             totalSales: 0,
             totaltransacted: 0,
-            netprofit: 0
-          }
+            netprofit: 0,
+          };
         }
 
-        productMetric[CategoryId].totalSales += soldprice;
-        productMetric[CategoryId].totaltransacted += totaltransaction;
-        productMetric[CategoryId].netprofit += netprofit;
+        productMetric[productId].totalSales += soldprice;
+        productMetric[productId].totaltransacted += totaltransaction;
+        productMetric[productId].netprofit += totalprofit;
 
         if (!sellerMetric[sellerId]) {
           sellerMetric[sellerId] = {
-            sellerName: sale.sellername,
+            sellerName: sellerName,
             totalSales: 0,
             netprofit: 0,
-            totaltransacted: 0
-          }
+            totaltransacted: 0,
+          };
         }
+
         sellerMetric[sellerId].totalSales += soldprice;
-        sellerMetric[sellerId].netprofit += netprofit;
+        sellerMetric[sellerId].netprofit += totalprofit;
         sellerMetric[sellerId].totaltransacted += totaltransaction;
-      })
-      const productAnalytics = Object.values(productMetric).sort((a, b) => b.totalSales - a.totalSales).slice(0, 5);
-      const totalProducts = Object.entries(productMetric).length;
-      const sellerAnalytics = Object.values(sellerMetric).sort((a, b) => b.totalSales - a.totalSales).slice(0, 5);
-      const totalSellers = Object.values(sellerMetric).length;
-      return { sellerAnalytics, productAnalytics, totalProducts, totalSellers }
+      });
+
+      // Sort and get top 5 products
+      const productAnalytics = Object.values(productMetric)
+        .sort((a, b) => b.totalSales - a.totalSales)
+        .slice(0, 5);
+
+      // Get total number of products
+      const totalProducts = Object.keys(productMetric).length;
+
+      // Sort and get top 5 sellers
+      const sellerAnalytics = Object.values(sellerMetric)
+        .sort((a, b) => b.totalSales - a.totalSales)
+        .slice(0, 5);
+
+      // Get total number of sellers
+      const totalSellers = Object.keys(sellerMetric).length;
+
+      return { sellerAnalytics, productAnalytics, totalProducts, totalSellers };
     } catch (err) {
       if (err instanceof APIError) {
         throw err;
@@ -582,59 +703,112 @@ class salesmanagment {
       throw new APIError(
         "internal error",
         STATUS_CODE.INTERNAL_ERROR,
-        err.message || "internal server  error"
+        err.message || "internal server error"
       );
     }
   }
-  async getUserSales(userId, startDate, endDate, page, limit) {
+
+  async getUserSales(salesDetails) {
     try {
-      const database = ["accessories", "mobiles"];
+      const { userId, startDate, endDate, page, limit } = salesDetails;
       const skip = (page - 1) * limit;
-      const seller = await this.user.findUserById({ id: userId });
-      if (!seller) {
-        throw new APIError(
-          "not found",
-          STATUS_CODE.NOT_FOUND,
-          "Seller not found"
-        )
-      }
-      const sales = database.map(async (item) => {
-        return await this.sales.getUserSalesById(
-          userId,
-          startDate,
-          endDate,
-          item
-        )
-      })
-      const resolvedSales = await Promise.all(sales);
 
+      // Fetch general sales data
+      const generalSalesData = await this.generategeneralsales({
+        startDate,
+        endDate,
+        page,
+        limit,
+      });
 
-      const combinedSales = await resolvedSales.flatMap((result) => result.usermanagementSalesReport)
-      if (!combinedSales.length) {
-        throw new APIError(
-          "No sales data found",
-          STATUS_CODE.NOT_FOUND,
-          "No sales data seen yet"
+      const allSales = generalSalesData[0].sales.sales;
+
+      // Filter sales for the specific user
+      const fullfilledSales = allSales.filter(
+        (sale) => sale.sellerDetails.id === userId
+      );
+
+      // Filter out pending finance sales
+      const filteredSales = fullfilledSales.filter((sale) => {
+        return (
+          sale.saleType !== "finance" ||
+          sale.financeDetails.financeStatus !== "pending"
         );
-      }
-      const sortedSales = combinedSales.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      const paginatedSales = sortedSales.slice(skip, skip + limit);
+      });
 
-      const totalSales = combinedSales.reduce((acc, sale) => acc + sale.soldprice, 0);
-      const totalProfit = combinedSales.reduce((acc, sale) => acc + sale.netprofit, 0);
-      return {
-        sales: paginatedSales,
-        totalSales,
-        totalProfit,
-        totalPages: Math.ceil(combinedSales.length / limit),
-        currentPage: page,
+      // Paginate the sales
+      const paginatedSales = fullfilledSales.slice(skip, skip + limit);
+
+      // Transform sales data to match the previous structure
+      const transformSales = (sales) => {
+        return sales.map((sale) => ({
+          soldprice: sale.soldprice,
+          netprofit: sale.totalprofit,
+          commission: sale.commission,
+          productcost: sale.productDetails.productCost,
+          productmodel: sale.categoryDetails.itemModel,
+          productname: sale.categoryDetails.itemName,
+          totalnetprice: sale.soldprice,
+          totalsoldunits: sale.totaltransaction,
+          totaltransaction: sale.totaltransaction,
+          _id: {
+            productId: sale.productDetails.productID,
+            sellerId: sale.sellerDetails.id,
+            shopId: sale.shopDetails.id,
+          },
+          financeDetails: sale.financeDetails,
+          CategoryId: sale.categoryDetails.categoryId,
+          createdAt: sale.createdAt,
+          batchNumber: sale.productDetails.batchNumber,
+          category: sale.productDetails.productType,
+        }));
       };
-    } catch (err) {
-      console.log("err", err);
-      if (err instanceof APIError) {
-        throw err;
-      }
-      throw new Error(`Error in service layer: ${err.message}`);
+
+      const transformedSales = transformSales(paginatedSales);
+
+      // Calculate totals
+      const totalSales = fullfilledSales.reduce(
+        (acc, sale) => acc + sale.soldprice,
+        0
+      );
+      const totalCommission = fullfilledSales.reduce(
+        (acc, sale) => acc + sale.commission,
+        0
+      );
+      const totalProfit = filteredSales.reduce(
+        (acc, sale) => acc + sale.totalprofit,
+        0
+      );
+      const financeSales = fullfilledSales
+        .filter(
+          (sale) =>
+            sale.saleType === "finance" &&
+            sale.financeDetails.financeStatus === "pending"
+        )
+        .reduce((acc, sale) => acc + sale.financeDetails.financeAmount, 0);
+
+
+      return {
+        sales: {
+          sales: transformedSales,
+          totalSales,
+          totalProfit,
+          totalCommission,
+          financeSales,
+          totalPages: Math.ceil(filteredSales.length / limit),
+          currentPage: page,
+        },
+        analytics: {
+          analytics: await this.analyseSalesMetric(fullfilledSales),
+        },
+      };
+    } catch (error) {
+      console.error("Error in getUserSales:", error);
+      throw new APIError(
+        "Failed to fetch sales data",
+        STATUS_CODE.INTERNAL_ERROR,
+        error.message
+      );
     }
   }
   async paymentofcommission(salesId, amount) {

@@ -11,9 +11,9 @@ import {
 import { Clock, Store, ArrowRight } from 'lucide-react';
 
 interface Assignment {
-  _id: string;
+  id: string;
   shopId: {
-    _id: string;
+    id: string;
     name: string;
     id: string;
   };
@@ -50,9 +50,9 @@ const AssignmentHistory: React.FC<{
             { withCredentials: true },
           );
 
-          const { assignmentHistory } = response.data.user;
+          const { assignment } = response.data.user;
           // Sort assignments by date
-          const sortedAssignments = assignmentHistory.sort(
+          const sortedAssignments = assignment.sort(
             (a: Assignment, b: Assignment) =>
               new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
           );
@@ -96,7 +96,7 @@ const AssignmentHistory: React.FC<{
     assignments: Assignment[],
   ): GroupedAssignments => {
     return assignments.reduce((groups: GroupedAssignments, assignment) => {
-      const shopId = assignment.shopId._id;
+      const shopId = assignment.shopID;
       if (!groups[shopId]) {
         groups[shopId] = [];
       }
@@ -158,14 +158,14 @@ const AssignmentHistory: React.FC<{
                     <div className="flex items-center gap-3 mb-6">
                       <Store className="h-6 w-6 text-primary dark:text-primary" />
                       <h3 className="font-semibold text-black dark:text-white text-title-sm">
-                        {assignments[0].shopId.name}
+                        {assignments[0].shops.shopName}
                       </h3>
                     </div>
 
                     <div className="space-y-4">
                       {assignments.map((assignment, index) => (
                         <div
-                          key={assignment._id}
+                          key={assignment.id}
                           className="relative pl-6 border-l-2 border-stroke dark:border-strokedark"
                         >
                           {/* Timeline dot */}
@@ -175,13 +175,13 @@ const AssignmentHistory: React.FC<{
                             <div className="flex items-center gap-2 mb-2">
                               <span
                                 className={`font-medium capitalize ${getStatusColor(
-                                  assignment.type,
+                                  assignment.status,
                                 )}`}
                               >
-                                {assignment.type}
+                                {assignment.status}
                               </span>
                               <span className="text-xs md:text-sm text-bodydark2">
-                                {formatDate(assignment.createdAt)}
+                                {formatDate(assignment.fromDate)}
                               </span>
                             </div>
 

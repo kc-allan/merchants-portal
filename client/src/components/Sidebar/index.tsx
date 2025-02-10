@@ -21,14 +21,15 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
     storedSidebarExpanded === null ? false : storedSidebarExpanded === 'true',
   );
 
-  const version = 'v.1.1.9';
+  const version = 'v.1.1.1';
   const [userRole, setUserRole] = useState<string>('');
 
   useEffect(() => {
     const tokenObj = localStorage.getItem('tk');
     if (tokenObj) {
       const decoded = jwt_decode(tokenObj) as DecodedToken;
-      // 
+      console.log(decoded.role);
+      
       if (
         decoded.role === 'superuser' ||
         decoded.role === 'manager' ||
@@ -39,7 +40,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
     } else {
       navigate('/auth/signin');
     }
-  }, []);
+  }, [userRole]);
 
   // close on click outside
   useEffect(() => {

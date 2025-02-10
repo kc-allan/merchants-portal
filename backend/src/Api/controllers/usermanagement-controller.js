@@ -8,14 +8,6 @@ let usermanagement = new userManagmentService();
 //gettting to the landing page
 const createmainUser = async (req, res, next) => {
   try {
-    const { error } = userinputvalidation(req.body);
-    if (error) {
-      return res.status(403).json({ message: error.details[0].message });
-    }
-    // const user = req.user;
-    // if (user.role !== "superuser") {
-    //   throw new APIError("unauthorised", 403, "you cannot create a superuser");
-    // }
 
     const {
       name,
@@ -25,6 +17,7 @@ const createmainUser = async (req, res, next) => {
       nextofkinphonenumber,
       nextofkinname,
     } = req.body;
+
     const newUser = await usermanagement.createSuperUser({
       name,
       password,
@@ -51,6 +44,7 @@ const createmainUser = async (req, res, next) => {
 const createSeller = async (req, res, next) => {
   try {
     const user = req.user;
+    console.log("user", user)
     if (user.role !== "superuser" && user.role !== "manager") {
       throw new APIError("unauthorised", 403, "you cannot create seller");
     }
@@ -175,6 +169,7 @@ const UserLogin = async (req, res, next) => {
 const addprofilepicture = async (req, res) => {
   try {
     const user = req.user;
+    console.log("user", user)
     const email = user.email;
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: "No files uploaded", error: true });
@@ -201,6 +196,7 @@ const addprofilepicture = async (req, res) => {
       message: "profile image successfully added",
     });
   } catch (err) {
+    console.log(err);
     if (err instanceof APIError) {
       return res.status(err.statusCode).json({
         message: err.message,
@@ -296,10 +292,10 @@ const addIdImagebackward = async (req, res) => {
 const userUpdateStatus = async (req, res, next) => {
   try {
     const { status, id } = req.body;
-
+    const userId = id;
     const updatedUser = await usermanagement.updateUserStatus({
       status,
-      id,
+      userId,
     });
 
     return res.status(200).json({
@@ -322,10 +318,10 @@ const userUpdateRole = async (req, res, next) => {
       throw new APIError("unauthorised", 403, "cannot update user role");
     }
     const { role, id } = req.body;
-
+    //const userId = id;
     const updatedUser = await usermanagement.updateUserRole({
       role,
-      id,
+      id: parseInt(id, 10),
     });
 
     return res.status(200).json({
@@ -342,9 +338,9 @@ const userUpdateRole = async (req, res, next) => {
 };
 const userProfileUpdate = async (req, res, next) => {
   try {
-    const { password, name, phone, email, nextofkinname, nextofkinphonenumber } = req.body;
+    const { password, name, phone, nextofkinname, nextofkinphonenumber } = req.body;
     const user = req.user;
-    const userRequestedId = user.id
+    const email = user.email
     const updatedUserProfile = await usermanagement.updateUserProfile({
       password,
       name,
@@ -352,7 +348,6 @@ const userProfileUpdate = async (req, res, next) => {
       email,
       nextofkinname,
       nextofkinphonenumber,
-      userRequestedId,
     });
 
     return res.status(200).json({
